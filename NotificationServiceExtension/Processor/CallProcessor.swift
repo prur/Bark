@@ -12,7 +12,7 @@ import Foundation
 
 class CallProcessor: NotificationContentProcessor {
     /// 铃声文件夹，扩展访问不到主APP中的铃声，需要先共享铃声文件
-    let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark")?.appendingPathComponent("Library/Sounds")
+    let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark")?.appendingPathComponent("Library/Sounds")
     
     func process(identifier: String, content bestAttemptContent: UNMutableNotificationContent) async throws -> UNMutableNotificationContent {
         guard let call = bestAttemptContent.userInfo["call"] as? String, call == "1" else {

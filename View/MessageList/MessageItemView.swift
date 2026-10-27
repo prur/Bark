@@ -171,7 +171,7 @@ extension MessageItemView {
         if let cache = MessageItemView.imageCache, let createdTime = MessageItemView.imageCacheCreatedTime, createdTime > date {
             return cache
         }
-        let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark")
+        let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark")
         let cache = try? ImageCache(name: "shared", cacheDirectoryURL: groupUrl)
         MessageItemView.imageCache = cache
         MessageItemView.imageCacheCreatedTime = Date()

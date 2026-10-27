@@ -8,7 +8,7 @@
 import Foundation
 
 enum WidgetHistoryConstants {
-    static let appGroupIdentifier = "group.bark"
+    static let appGroupIdentifier = "group.cc.sanbox.bark"
     static let snapshotFilename = "recent_messages_snapshot.json"
     static let widgetKind = "RecentMessagesWidget"
     static let displayLimit = 3

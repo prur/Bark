@@ -24,7 +24,7 @@ struct ServerAddressOptionsProvider: DynamicOptionsProvider {
 struct SoundOptionsProvider: DynamicOptionsProvider {
     func results() async throws -> [String] {
         var customSounds: [String] = []
-        if let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark")?.appendingPathComponent("Library/Sounds").path {
+        if let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark")?.appendingPathComponent("Library/Sounds").path {
             customSounds = getSounds(urls: getFilesInDirectory(directory: soundsDirectoryUrl, suffix: "caf"))
         }
         let defaultSounds = getSounds(urls: Bundle.main.urls(forResourcesWithExtension: "caf", subdirectory: nil) ?? [])

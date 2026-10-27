@@ -185,9 +185,6 @@ class HomeViewController: BaseViewController<HomeViewModel> {
         if !hasNotificationPermission(settings.authorizationStatus) {
             return .notification
         }
-        if settings.criticalAlertSetting == .disabled {
-            return .criticalAlert
-        }
         return .granted
     }
 
@@ -199,14 +196,14 @@ class HomeViewController: BaseViewController<HomeViewModel> {
         Task { @MainActor [weak self] in
             guard let self else { return }
             let settings = await UNUserNotificationCenter.current().notificationSettings()
-            if settings.authorizationStatus == .denied || settings.criticalAlertSetting == .disabled {
+            if settings.authorizationStatus == .denied {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     await UIApplication.shared.open(url)
                 }
                 return
             }
 
-            let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .criticalAlert])) ?? false
+            let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
             if granted {
                 UIApplication.shared.registerForRemoteNotifications()
             }

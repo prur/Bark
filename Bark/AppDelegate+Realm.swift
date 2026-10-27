@@ -34,7 +34,7 @@ extension AppDelegate {
         }
         
         let fileManager = FileManager.default
-        guard let oldGroupUrl = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.bark"),
+        guard let oldGroupUrl = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark"),
               let newDocUrl = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
         else {
             return
@@ -84,7 +84,7 @@ extension AppDelegate {
             pendingMessageProcessingQueue.async {
                 defer { continuation.resume() }
 
-                guard let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark") else {
+                guard let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark") else {
                     return
                 }
 

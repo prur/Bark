@@ -40,7 +40,7 @@ class ImageDownloader {
     /// - Parameter imageUrl: 图片URL字符串
     /// - Returns: 保存在本地中的`图片 File URL`
     class func downloadImage(_ imageUrl: String) async -> String? {
-        guard let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark"),
+        guard let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark"),
               let cache = try? ImageCache(name: "shared", cacheDirectoryURL: groupUrl),
               let imageResource = URL(string: imageUrl)
         else {

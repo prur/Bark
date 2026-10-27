@@ -77,7 +77,7 @@ class ArchiveProcessor: NotificationContentProcessor {
             }
 
             // 写入 plist 文件
-            if let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark") {
+            if let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark") {
                 let pendingMessagesDir = groupUrl.appendingPathComponent("pending_messages")
                 
                 // 创建目录（如果不存在）

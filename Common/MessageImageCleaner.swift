@@ -22,7 +22,7 @@ class MessageImageCleaner: @unchecked Sendable {
 
     /// 与 ImageDownloader 使用同一个图片缓存
     private lazy var imageCache: ImageCache? = {
-        guard let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark") else {
+        guard let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark") else {
             return nil
         }
         return try? ImageCache(name: "shared", cacheDirectoryURL: groupUrl)

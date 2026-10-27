@@ -113,7 +113,7 @@ class SoundsViewModel: ViewModel, ViewModelType {
             )
 
             let customSounds: [SoundItem] = {
-                guard let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark")?.appendingPathComponent("Library/Sounds").path else {
+                guard let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark")?.appendingPathComponent("Library/Sounds").path else {
                     return [.addSound]
                 }
                 return self.getSounds(
@@ -204,7 +204,7 @@ class SoundFileStorage: SoundFileStorageProtocol {
     /// 获取 Library 目录下的 Sounds 文件夹
     /// 如果不存在就创建
     private func getSoundsDirectory() -> URL? {
-        guard let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.bark")?.appendingPathComponent("Library/Sounds") else {
+        guard let soundsDirectoryUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark")?.appendingPathComponent("Library/Sounds") else {
             return nil
         }
         if !fileManager.fileExists(atPath: soundsDirectoryUrl.path) {

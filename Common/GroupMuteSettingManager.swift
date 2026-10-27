@@ -12,7 +12,7 @@ let kGroupMuteSettingKey = "groupMuteSettings"
 
 /// 保存各分组的静音截止时间，注意 NotificationServiceExtension 和 NotificationContentExtension 是不同进程，不共享单例的（别用单例）
 class GroupMuteSettingManager: NSObject {
-    let defaults = UserDefaults(suiteName: "group.bark")
+    let defaults = UserDefaults(suiteName: "group.cc.sanbox.bark")
     
     var settings: [String: Date] = [:] {
         didSet {

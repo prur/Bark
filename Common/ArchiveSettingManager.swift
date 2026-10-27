@@ -10,7 +10,7 @@ import UIKit
 
 class ArchiveSettingManager: NSObject {
     static let shared = ArchiveSettingManager()
-    let defaults = UserDefaults(suiteName: "group.bark")
+    let defaults = UserDefaults(suiteName: "group.cc.sanbox.bark")
     var isArchive: Bool {
         get {
             return defaults?.value(forKey: "isArchive") as? Bool ?? true
