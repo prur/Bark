@@ -44,7 +44,8 @@ python3 scripts/zbark.py smoke --registration-mode existing
 Each test/archive run gets a new evidence directory. An archive requires clean,
 committed source and a positive build number. Increase that number for every
 update. `doctor` checks Pods and all four existing Ad Hoc profiles against
-installed signing identities; export uses those profiles explicitly. No
+installed signing identities; local automatic export reuses Xcode-managed Ad Hoc
+profiles, then verifies that their exact UUIDs match the preflight inventory. No
 `-allowProvisioningUpdates`, Match, certificate creation or revocation is used.
 The upstream TestFlight workflow was removed and the fastlane beta lane refuses
 to access upstream signing assets. `fastlane tests` now uses the workspace.

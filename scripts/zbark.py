@@ -154,15 +154,17 @@ def archive(args):
     baseline = doctor()
     if baseline["source"]["dirty"]:
         raise ValueError("Commit source changes before a release archive")
-    profiles, certificate = signing_profiles()
+    profiles, _ = signing_profiles()
     output = output_directory(args.output, "archive")
     write_json(output / "baseline.json", baseline)
     archive_path = output / "ZBark.xcarchive"
     run(["xcodebuild", "archive", "-workspace", "Bark.xcworkspace", "-scheme", "Bark", "-configuration", "Release",
          "-destination", "generic/platform=iOS", "-archivePath", str(archive_path), "-derivedDataPath", str(ROOT / "build/zbark-derived"),
          f"CURRENT_PROJECT_VERSION={args.build_number}"], output / "archive.log")
-    options = {"method": "release-testing", "signingStyle": "manual", "teamID": TEAM, "signingCertificate": certificate,
-               "provisioningProfiles": {bundle: profile["UUID"] for bundle, (profile, _) in profiles.items()},
+    # Existing profiles are Xcode-managed Ad Hoc profiles, which Xcode refuses
+    # in manual export mode. Automatic export can reuse them locally without
+    # -allowProvisioningUpdates; verify the exact profile UUIDs afterwards.
+    options = {"method": "release-testing", "signingStyle": "automatic", "teamID": TEAM,
                "manageAppVersionAndBuildNumber": False}
     options_path = output / "ExportOptions.plist"
     options_path.write_bytes(plistlib.dumps(options))
@@ -172,6 +174,9 @@ def archive(args):
     if len(ipas) != 1:
         raise ValueError("Export did not produce exactly one IPA")
     report = verify_ipa(ipas[0], args.device)
+    for bundle in report["bundles"]:
+        if bundle["profile_uuid"] != profiles[bundle["bundle"]][0]["UUID"]:
+            raise ValueError("Export selected an unexpected provisioning profile")
     report["source"] = baseline["source"]
     write_json(output / "validation.json", report)
     print(json.dumps(report, indent=2))
