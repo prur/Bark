@@ -13,9 +13,9 @@ on a physical iPhone.
 - [x] Make notification extension completion safe on timeout and early failure.
 - [x] Make server regression tests independent of production APNs credentials.
 - [x] Verify APNs configuration, payload and provider failure behavior.
-- [ ] Add repeatable signed build, verification and maintenance instructions.
-- [ ] Run appropriate tests and produce a current validation record.
-- [ ] Commit changes and record the submission and deployment boundary.
+- [x] Add repeatable signed build, verification and maintenance instructions.
+- [x] Run appropriate tests and produce a current validation record.
+- [x] Commit changes and record the submission and deployment boundary.
 - [ ] Physical device: registration, foreground/background/locked delivery,
   extension processing, restart and update persistence (device unavailable at
   initial inventory; not accepted from the old report).
@@ -129,3 +129,34 @@ claimed. No physical-device acceptance is asserted by this task's automated test
 Authoritative references: [APNs registration](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns),
 [extension time budget](https://developer.apple.com/documentation/usernotifications/unnotificationserviceextension),
 [APNs failure reasons](https://developer.apple.com/documentation/usernotifications/handling-notification-responses-from-apns).
+
+## Current validation record (2026-11-06)
+
+- Client release source: `bc854b2044e5050485e48981fa08c28e953254f3`;
+  version 1.0.0, build 2. Archive, export and all four signature/profile checks
+  passed. SHA-256: `7b2675d3be997a2bb829b6bfea67a6dc3721a8ddea33c128a434850248130df1`.
+  The exact existing profile UUIDs were reused. Signing identities were unchanged.
+- Client simulator regression: 18 invocations (9 XCTest methods and the existing
+  9-case parameterized time-range test), zero failures, no xcresult runtime warnings.
+  The tested app code is the code in the exported release; later edits are tooling
+  and this validation ledger.
+- Server runtime source: `fb6a43e039078ed52dded5aadc438be992601af6`, deployed as
+  `bark-server:zbark-fb6a43e03907`. The database-copy canary passed existing-key
+  replay and closed-enrollment checks. Production retained its registration count,
+  data/credential mounts and hardening; other service containers were not restarted.
+- Server offline HTTP/2 APNs tests, Go race detection/vet, bbolt restart persistence
+  and registration-window tests passed. A clean Go binary rebuild matched SHA-256
+  byte for byte (same toolchain and source).
+- Public HTTPS smoke passed after deployment. A single intentionally invalid-token
+  production APNs request returned `400 BadDeviceToken`; no real device token was
+  used. This confirms the observed negative response, not physical delivery.
+- Physical iPhone unavailable: no new client installation, foreground/background/
+  locked delivery, encrypted/rich notification processing, or in-place update and
+  history acceptance was performed. The earlier 2026-10-27 results remain historical.
+- Both repositories use isolated `fix/zbark-reliability` worktrees. Changes are
+  locally committed. Only the read-only Finb upstream origin is configured, and no
+  personal fork exists at `prur/Bark` or `prur/bark-server`; no remote PR is claimed.
+
+The current handoff directory is `build/zbark-reliability-20261106/` in the original
+client checkout. It contains the new IPA and combined validation report, with
+paths to xcresult, signing and deployment evidence in the isolated worktrees.
