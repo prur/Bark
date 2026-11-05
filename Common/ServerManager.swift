@@ -10,6 +10,7 @@ import RxCocoa
 import RxSwift
 import SwiftUI
 import UIKit
+import SwiftyJSON
 
 let defaultServer = "https://bark.sanbox.cc"
 
@@ -64,6 +65,16 @@ class Server: Codable {
 
 class ServerManager: NSObject {
     static let shared = ServerManager()
+    private var persistServers: ([Server]) -> Void = { Settings[.servers] = $0 }
+
+    /// In-memory dependencies for regression tests; never touches saved servers.
+    init(servers: [Server], persist: @escaping ([Server]) -> Void) {
+        precondition(!servers.isEmpty)
+        self.servers = servers
+        self.currentServer = servers[0]
+        self.persistServers = persist
+        super.init()
+    }
     override private init() {
         var servers: [Server] = []
         if let savedServers: [Server] = Settings[.servers] {
@@ -151,7 +162,7 @@ class ServerManager: NSObject {
 
     /// 保存 servers
     func saveServers() {
-        Settings[.servers] = self.servers
+        persistServers(self.servers)
     }
 
     @available(*, unavailable)
@@ -160,14 +171,14 @@ class ServerManager: NSObject {
     }
 
     var dispose: Disposable?
+    private var syncingToken: String?
+    private var syncingServerIDs: [String] = []
     /// 同步所有 server
     func syncAllServers() {
         guard let token = Client.shared.deviceToken.value, token.count > 0 else {
             return
         }
-        dispose?.dispose()
-
-        let apis = servers.map { server in
+        syncAllServers(token: token) { server, token in
             BarkApi.provider.request(
                 .register(
                     address: server.address,
@@ -175,34 +186,71 @@ class ServerManager: NSObject {
                     devicetoken: token
                 ))
                 .filterResponseError()
-                .map { result -> (Server, String?) in
-
+                .map { result -> String? in
                     switch result {
                     case .success(let json):
-                        return (server, json["data", "key"].rawString())
+                        return Self.registrationKey(from: json)
                     case .failure:
-                        return (server, nil)
+                        return nil
                     }
-                }.catch { _ in
-                    Observable.just((server, nil))
                 }
         }
+    }
 
+    static func registrationKey(from json: JSON) -> String? {
+        guard let key = json["data", "key"].string, !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return key
+    }
+
+    func resetServerKey(
+        server: Server, requestedKey: String?, token: String,
+        register: @escaping (String?, String) -> Observable<String?>
+    ) -> Observable<String?> {
+        let oldKey = server.key
+        return register(requestedKey, token).catchAndReturn(nil).flatMap { [weak self] issuedKey -> Observable<String?> in
+            guard let self, let issuedKey, !issuedKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  self.servers.contains(where: { $0 === server }), server.key == oldKey else { return .just(nil) }
+            // Persist a working replacement before invalidating the old link.
+            // Closed enrollment and network failures leave the old key usable.
+            server.key = issuedKey
+            self.updateServerKey(server: server)
+            guard !oldKey.isEmpty, oldKey != issuedKey else { return .just(issuedKey) }
+            // Keep the replacement, but surface a failed revocation to the UI.
+            return register(oldKey, "deleted").map { $0 == oldKey ? Optional(issuedKey) : nil }.catchAndReturn(nil)
+        }
+    }
+
+    func syncAllServers(token: String, register: (Server, String) -> Observable<String?>) {
+        guard !token.isEmpty else { return }
+        let serverIDs = servers.map(\.id)
+        guard syncingToken != token || syncingServerIDs != serverIDs else { return }
+        dispose?.dispose()
+        syncingToken = token
+        syncingServerIDs = serverIDs
+        let apis = servers.map { server -> Observable<(Server, String, String?)> in
+            let originalKey = server.key
+            return register(server, token)
+                .catchAndReturn(nil)
+                .map { (server, originalKey, $0) }
+        }
         dispose = Observable
             .merge(apis)
-            .subscribe { result in
-                // 更新所有的 server key
-                if let key = result.1 {
-                    result.0.key = key
-                    if result.0.id == self.currentServer.id {
-                        self.currentServerUpdateRelay.accept(result.0)
-                    }
-                }
-            } onError: { _ in
-
-            } onCompleted: {
+            .observe(on: MainScheduler.instance)
+            .subscribe(onNext: { [weak self] result in
+                let (server, originalKey, newKey) = result
+                guard let self, let newKey, !newKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                      self.servers.contains(where: { $0 === server }),
+                      server.key == originalKey else { return }
+                server.key = newKey
+                // Persist each successful response immediately. A slow server,
+                // cancellation or app suspension must not lose another key.
                 self.saveServers()
-            }
+                if server.id == self.currentServer.id {
+                    self.currentServerUpdateRelay.accept(server)
+                }
+            }, onCompleted: { [weak self] in
+                self?.syncingToken = nil
+            })
     }
     
     func setServerName(server: Server, name: String?) {

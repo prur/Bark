@@ -4,6 +4,7 @@
 //
 
 import UIKit
+import UserNotifications
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -49,6 +50,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillEnterForeground(_ scene: UIScene) {
         // Setting -1 clears the badge without removing delivered notifications.
         UIApplication.shared.applicationIconBadgeNumber = -1
+
+        // Refresh the APNs token and retry server registration after an offline
+        // launch or a return from Settings without prompting for permission.
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) else { return }
+            DispatchQueue.main.async {
+                ServerManager.shared.syncAllServers()
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
 
         Task {
             await appDelegate?.processPendingMessages()

@@ -6,7 +6,8 @@
 #*.xcworkspacedata
 *.xcuserstate
 build/
-Pods/
+Pods
+__pycache__/
 .DS_Store
 ._.*
 xcuserdata

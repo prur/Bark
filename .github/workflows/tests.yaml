@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+      - feat/sanbox-bark
+      - fix/zbark-reliability
   pull_request:
     branches:
       - master
@@ -36,7 +38,7 @@ jobs:
           ${{ runner.os }}-pods-
 
     - name: Install Pods
-      run: pod install
+      run: bundle exec pod install --deployment
 
     - name: Run Tests
       run: |

@@ -99,16 +99,14 @@ private class LogPlugin: PluginType {
     func willSend(_ request: RequestType, target: TargetType) {
         print("\n-------------------\n准备请求: \(target.path)")
         print("请求方式: \(target.method.rawValue)")
-        if let params = (target as? BarkTargetType)?.parameters {
-            print(params)
-        }
         print("\n")
     }
 
     func didReceive(_ result: Result<Response, MoyaError>, target: TargetType) {
         print("\n-------------------\n请求结束: \(target.path)")
-        if let data = try? result.get().data, let resutl = String(data: data, encoding: String.Encoding.utf8) {
-            print("请求结果: \(resutl)")
+        if let response = try? result.get() {
+            // Registration responses contain the device token and push key.
+            print("HTTP: \(response.statusCode)")
         }
         print("\n")
     }

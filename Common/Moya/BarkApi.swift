@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import Moya
 
 enum BarkApi {
     case ping(baseURL: String?)
@@ -14,6 +15,13 @@ enum BarkApi {
 }
 
 extension BarkApi: BarkTargetType {
+    var method: Moya.Method {
+        switch self {
+        case .ping: return .get
+        case .register: return .post
+        }
+    }
+
     var baseURL: URL {
         switch self {
         case let .ping(urlStr):

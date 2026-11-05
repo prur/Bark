@@ -1,60 +1,13 @@
-# This file contains the fastlane.tools configuration
-# You can find the documentation at https://docs.fastlane.tools
-#
-# For a list of all available actions, check out
-#
-#     https://docs.fastlane.tools/actions
-#
-# For a list of all available plugins, check out
-#
-#     https://docs.fastlane.tools/plugins/available-plugins
-#
-
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
-
 default_platform(:ios)
 
 platform :ios do
-  desc "Push a new beta build to TestFlight"
-  lane :beta do | options |
-    setup_ci
-    
-    version = options[:store_version_number]
-    if !version.nil? && !version.empty?
-      increment_version_number(version_number: version)
-    end
-
-    build = options[:build_number]
-    if !build.nil? && !build.empty?
-      increment_build_number(build_number: build.to_i)
-    end
-    
-    run_id = ENV["GITHUB_RUN_ID"]
-    if !run_id.nil? && !run_id.empty?
-      set_info_plist_value(path: "./Bark/Info.plist", key: "GitHub Run Id", value: run_id)
-    end
-    
-    match(type: "appstore", readonly: is_ci)
-
-    build_app(workspace: "Bark.xcworkspace", scheme: "Bark")
-
-    app_store_connect_api_key(
-      key_id: "DX95H785DP",
-      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-      key_content: ENV["APP_STORE_CONNECT_KEY_CONTENT"],
-      duration: 1200, # optional (maximum 1200)
-      in_house: false # optional but may be required if using match/sigh
-    )    
-
-    upload_to_testflight
-
-    bark_key = ENV["BARK_KEY"]
-    %x( 'curl' 'https://api.day.app/#{bark_key}/Bark%20#{version}%20(#{build})%20has%20completed%20processing?ttl=604800&group=Github%20Actions&url=https%3A%2F%2Fgithub.com%2FFinb%2FBark%2Factions%2Fruns%2F#{run_id}' )
-    
+  desc "Z Bark uses the local signed archive workflow"
+  lane :beta do
+    UI.user_error!("Run python3 scripts/zbark.py archive --build-number NUMBER. Z Bark must not access upstream Match/App Store assets.")
   end
 
+  desc "Run workspace regression tests"
   lane :tests do
-    run_tests(scheme: "Bark.xcworkspace", scheme: "Bark")
+    run_tests(workspace: "Bark.xcworkspace", scheme: "Bark")
   end
 end

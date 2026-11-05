@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import os
 import UserNotifications
 
 private let pendingMessageProcessingQueue = DispatchQueue(label: "me.fin.bark.pending-message-processing", qos: .userInitiated)
@@ -92,77 +93,31 @@ extension AppDelegate {
                     return
                 }
 
-                let pendingMessagesDir = groupUrl.appendingPathComponent("pending_messages")
-                let plistFiles: [URL]
-                if FileManager.default.fileExists(atPath: pendingMessagesDir.path),
-                   let fileUrls = try? FileManager.default.contentsOfDirectory(
-                       at: pendingMessagesDir,
-                       includingPropertiesForKeys: nil,
-                       options: [.skipsHiddenFiles]
-                   )
-                {
-                    plistFiles = fileUrls.filter { $0.pathExtension == "plist" }
-                } else {
-                    plistFiles = []
+                let result: PendingMessageStore.ImportResult
+                do {
+                    result = try PendingMessageStore(directory: groupUrl.appendingPathComponent("pending_messages"))
+                        .importMessages(into: realm)
+                } catch {
+                    // Keep every pending file so the next launch/foreground can
+                    // retry a failed transaction without losing history.
+                    Logger(subsystem: "cc.sanbox.bark", category: "history").error("History import failed; pending messages retained")
+                    return
                 }
 
-                var messagesToAdd: [Message] = []
-                let now = Date()
-                var didChangeMessages = false
-
-                for plistUrl in plistFiles {
-                    guard let dict = NSDictionary(contentsOf: plistUrl) as? [String: Any] else {
-                        continue
-                    }
-
-                    let message = Message(dict: dict)
-                    if let expireDate = message.expireDate, expireDate <= now {
-                        continue
-                    }
-                    messagesToAdd.append(message)
-                }
-
-                let expiredMessages = realm.objects(Message.self)
-                    .filter("expireDate != nil AND expireDate <= %@", now)
-                let expiredMessageIds = Array(expiredMessages.map(\.id))
-                let expiredImageUrls = MessageImageCleaner.shared.imageUrls(in: expiredMessages)
-
-                if !messagesToAdd.isEmpty || !expiredMessages.isEmpty {
-                    do {
-                        try realm.write {
-                            if !messagesToAdd.isEmpty {
-                                didChangeMessages = true
-                                for message in messagesToAdd {
-                                    realm.add(message, update: .all)
-                                }
-                            }
-                            if !expiredMessages.isEmpty {
-                                didChangeMessages = true
-                                realm.delete(expiredMessages)
-                            }
-                        }
-                    } catch {
-                        // 一般不会失败，真失败了算你小子运气差
-                    }
-                }
-
-                if didChangeMessages {
+                if result.didChangeMessages {
                     Task {
                         await WidgetHistorySnapshotStore.shared.refreshFromRealmAsync()
                     }
                     self.notifyMessagesDidChange()
                 }
 
-                if !expiredMessageIds.isEmpty {
-                    UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: expiredMessageIds)
+                if !result.expiredIDs.isEmpty {
+                    UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: result.expiredIDs)
                     Task {
-                        await MessageDeletionCoordinator.removeImageCaches(expiredImageUrls)
+                        await MessageDeletionCoordinator.removeImageCaches(result.expiredImageURLs)
                     }
                 }
 
-                for plistUrl in plistFiles {
-                    try? FileManager.default.removeItem(at: plistUrl)
-                }
             }
         }
     }
