@@ -66,12 +66,33 @@
     "server_go_race_and_vet": "passed",
     "client_native_source_unchanged": true,
     "client_ci": "see current PR checks; source CI is recorded separately from documentation",
-    "server_source_ci": "https://github.com/prur/bark-server/actions/runs/42147019556"
+    "server_source_ci": "https://github.com/prur/bark-server/actions/runs/42147019556",
+    "client_submission_ci": {
+      "head": "d7f8a2e590e2197ce934243860f6cafa0573c01f",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/prur/Bark/actions/runs/42148247604"
+    },
+    "server_submission_ci": {
+      "head": "747a593619e2b6c3aad2faa87dddb25f132f9e3c",
+      "status": "completed",
+      "conclusion": "success",
+      "pull_request_url": "https://github.com/prur/bark-server/actions/runs/42148252370",
+      "push_url": "https://github.com/prur/bark-server/actions/runs/42148243425"
+    }
   },
   "delivery": {
     "client_pr": "https://github.com/prur/Bark/pull/2",
     "server_pr": "https://github.com/prur/bark-server/pull/2",
-    "state": "open; not merged"
+    "state": "merged",
+    "client_merge": "0bac5396667046b13b789ae409d8db2ea27b6180",
+    "server_merge": "0eabe56a605c1476b34ea9cfd991bd206ffffe75",
+    "client_merged_at_utc": "2026-11-06T02:28:11Z",
+    "server_merged_at_utc": "2026-11-06T02:28:15Z",
+    "client_maintenance_branch": "fork/zbark",
+    "server_maintenance_branch": "fork/master",
+    "pre_merge_gate": "both CLEAN; all check rollups successful; no unresolved review threads",
+    "local_sync": "fast-forward only; original feature worktrees preserved"
   },
   "limits": [
     "No unrelated business producer or existing Discord/security-monitor migration",
@@ -82,5 +103,20 @@
     "Critical Alerts remain unapproved and disabled"
   ],
   "generated_at_utc": "2026-11-06T02:07:00.248464+00:00",
-  "evidence_root": "build/daily-reliability-20261106 (ignored; raw data and keys remain private)"
+  "evidence_root": "build/daily-reliability-20261106 (ignored; raw data and keys remain private)",
+  "merge_closeout": {
+    "recorded_at_utc": "2026-11-06T02:30:56.812089+00:00",
+    "code_review_heads": [
+      "d7f8a2e590e2197ce934243860f6cafa0573c01f",
+      "747a593619e2b6c3aad2faa87dddb25f132f9e3c"
+    ],
+    "security_review_receipt_heads": [
+      "6ec20a4065b1577c8d5f2e342c14c6994a349bd1",
+      "f17001adb9ca8e5cb982d4f1a8c9089163f34462"
+    ],
+    "security_review_scope": "retain actual reviewed SHAs; do not relabel them as later-head security approvals",
+    "physical_acceptance_repeated": false,
+    "application_or_server_redeployed": false,
+    "record_commit": "documentation only; skips redundant CI; original PR CI receipts retained"
+  }
 }

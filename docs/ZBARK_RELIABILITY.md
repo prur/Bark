@@ -504,3 +504,28 @@ and protected snapshots. 16 client Python tests, the Node authentication/nonce
 test, 15 server Python tests and Go race/vet pass. The two client review findings
 (capacity reservation and interrupted bundle publication) are fixed and covered.
 Check the linked PRs for current CI and review state before merging.
+
+
+## PR #2 merge closeout (2026-11-06)
+
+[Client PR #2](https://github.com/prur/Bark/pull/2) merged into `zbark` as
+`0bac5396667046b13b789ae409d8db2ea27b6180` at 10:28:11 Asia/Shanghai.
+[Server PR #2](https://github.com/prur/bark-server/pull/2) merged into `master` as
+`0eabe56a605c1476b34ea9cfd991bd206ffffe75` at 10:28:15 Asia/Shanghai.
+Both merge trees exactly match their checked PR heads.
+
+Before merging, current heads `d7f8a2e` and `747a593` were `CLEAN`; all check
+rollups succeeded. [Client CI](https://github.com/prur/Bark/actions/runs/42148247604),
+[server PR CI](https://github.com/prur/bark-server/actions/runs/42148252370), and
+[server push CI](https://github.com/prur/bark-server/actions/runs/42148243425)
+were checked directly, together with every review thread/comment. Both code
+review summaries were complete for the current heads, with no unresolved finding.
+Security-review receipts remain attributed to their actual earlier SHAs
+(`6ec20a4` / `f17001a`); they are not relabeled as later-head security approvals.
+
+Local maintenance branches are now `zbark` tracking `fork/zbark` and server
+`master` tracking `fork/master`, synchronized with fast-forward operations. Finb
+remotes, original feature worktrees and their pre-existing untracked files remain
+untouched. This closeout changes only delivery documentation; its record commit
+skips redundant CI. It does not rebuild/reinstall the app, redeploy services,
+repeat device acceptance, or change data, keys, signing or registration policy.
