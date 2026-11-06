@@ -19,7 +19,7 @@ class CiphertextProcessor: NotificationContentProcessor {
         
         // 如果是加密推送，则使用密文配置 bestAttemptContent
         do {
-            var map = try decrypt(ciphertext: ciphertext, iv: userInfo["iv"] as? String)
+            var map = try decrypt(ciphertext: ciphertext, iv: userInfo["iv"] as? String, ivEncoding: userInfo["iv_encoding"] as? String)
             
             var alert = [String: Any]()
             var soundName: String? = nil
@@ -74,13 +74,14 @@ class CiphertextProcessor: NotificationContentProcessor {
     ///   - ciphertext: 密文
     ///   - iv: iv 如果不传就用配置保存的，传了就以传的 iv 为准
     /// - Returns: 解密后的 json 数据
-    private func decrypt(ciphertext: String, iv: String? = nil) throws -> [AnyHashable: Any] {
+    private func decrypt(ciphertext: String, iv: String? = nil, ivEncoding: String? = nil) throws -> [AnyHashable: Any] {
         guard var fields = CryptoSettingManager.shared.fields else {
             throw "No encryption key set"
         }
         if let iv = iv {
             // Support using specified IV parameter for decryption
             fields.iv = iv
+            fields.ivEncoding = ivEncoding
         }
         
         let aes = try AESCryptoModel(cryptoFields: fields)

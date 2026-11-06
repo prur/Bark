@@ -1,6 +1,40 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "generateSecureEncryptionKey": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generate an AES-256-GCM key"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成 AES-256-GCM 安全密钥"
+          }
+        }
+      }
+    },
+    "encryptionKeyAlreadyPresent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back up and clear the current key before generating a replacement."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先备份并清空当前密钥，避免覆盖已有密钥。"
+          }
+        }
+      }
+    },
     "AddedSuccessfully" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -13,6 +13,7 @@ import RxSwift
 import SwiftyJSON
 import Moya
 import UserNotifications
+import Testing
 
 class BarkTests: XCTestCase {
     private func store() throws -> PendingMessageStore {
@@ -188,5 +189,58 @@ class BarkTests: XCTestCase {
         }.subscribe()
         XCTAssertEqual(server.key, "replacement")
         success.dispose()
+    }
+}
+
+struct EncryptionReliabilityTests {
+    @Test func secureGenerationUsesFullLengthIndependentKeys() throws {
+        let first = try CryptoSettingFields.secureDefaults()
+        let second = try CryptoSettingFields.secureDefaults()
+        #expect(first.algorithm == "AES256" && first.mode == "GCM" && first.padding == "noPadding")
+        #expect(first.keyEncoding == "base64")
+        #expect(Data(base64Encoded: try #require(first.key))?.count == 32)
+        #expect(first.key != second.key)
+        #expect(first.iv == nil)
+    }
+
+    @Test func nodeGCMFixtureAuthenticatesAndRejectsWrongKeyOrTampering() throws {
+        var fields = CryptoSettingFields(algorithm: "AES256", mode: "GCM", padding: "noPadding",
+            key: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", iv: "AAECAwQFBgcICQoL", keyEncoding: "base64", ivEncoding: "base64")
+        let ciphertext = "PCC0dKGc4CGvKvnkxodaEK82eoSmPPFPQ8iO1elRpko="
+        let aes = try AESCryptoModel(cryptoFields: fields)
+        #expect(try aes.decrypt(ciphertext: ciphertext) == "{\"body\":\"known\"}")
+        var data = try #require(Data(base64Encoded: ciphertext)); data[0] ^= 1
+        #expect(throws: (any Error).self) { try aes.decrypt(ciphertext: data.base64EncodedString()) }
+        let wrongKey = CryptoSettingFields(algorithm: "AES256", mode: "GCM", padding: "noPadding",
+            key: Data(repeating: 0, count: 32).base64EncodedString(), iv: fields.iv, keyEncoding: "base64", ivEncoding: "base64")
+        #expect(throws: (any Error).self) { try AESCryptoModel(cryptoFields: wrongKey).decrypt(ciphertext: ciphertext) }
+        fields.iv = "invalid"
+        #expect(throws: (any Error).self) { try AESCryptoModel(cryptoFields: fields) }
+    }
+
+    @Test(arguments: ["CBC", "ECB", "GCM"])
+    func legacyTextConfigurationsStillRoundTrip(mode: String) throws {
+        let fields = CryptoSettingFields(algorithm: "AES256", mode: mode,
+            padding: mode == "GCM" ? "noPadding" : "pkcs7", key: String(repeating: "K", count: 32),
+            iv: mode == "GCM" ? "123456789012" : "1234567890123456")
+        let aes = try AESCryptoModel(cryptoFields: fields)
+        #expect(try aes.decrypt(ciphertext: aes.encrypt(text: "兼容旧配置")) == "兼容旧配置")
+    }
+
+    @Test func invalidEncodedKeysAndUnicodeByteLengthAreRejected() throws {
+        let fields = CryptoSettingFields(algorithm: "AES256", mode: "GCM", padding: "noPadding", key: String(repeating: "密", count: 32))
+        #expect(throws: (any Error).self) { try AESCryptoModel.validate(cryptoFields: fields) }
+        let invalid = CryptoSettingFields(algorithm: "AES256", mode: "GCM", padding: "noPadding", key: "bad-base64!", keyEncoding: "base64")
+        #expect(throws: (any Error).self) { try AESCryptoModel.validate(cryptoFields: invalid) }
+    }
+
+    @Test func reusableExampleContainsNoSecretsAndGeneratesNonceAtRuntime() throws {
+        let fields = try CryptoSettingFields.secureDefaults()
+        let script = try CryptoSettingViewModel.senderExample(fields: fields, serverAddress: "https://example.com")
+        #expect(!script.contains(try #require(fields.key)))
+        #expect(script.contains("randomBytes(12)"))
+        #expect(script.contains("iv_encoding = 'base64'"))
+        #expect(script.contains("method: 'POST', redirect: 'error'"))
+        #expect(!script.contains("?ciphertext="))
     }
 }

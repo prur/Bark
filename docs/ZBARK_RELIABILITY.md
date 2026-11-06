@@ -63,6 +63,57 @@ An edge-generated empty 403 fails this check: it cannot prove the server policy.
 
 ## Safe client update
 
+### Repeatable physical-device evidence
+
+Keep the phone connected, unlocked and trusted, and launch the installed app
+before taking a snapshot. CoreDevice container reads can stall until that first
+launch. A failed or partial snapshot is not a complete backup. The device helper
+copies both the main container and App Group into a new directory with mode 0700;
+raw preferences, history and the derived push credential remain private. Never
+upload `private/`, screenshots with user history, IPA profiles or device logs to a PR.
+
+```sh
+python3 scripts/zbark_device.py snapshot --device <UDID> --output build/before-update
+# Create a JSON payload containing a unique id, title/body and isArchive="1".
+# Do not put a key or device_keys in it. This sends one real test notification:
+python3 scripts/zbark_device.py push \
+  --credentials build/before-update/private/credentials.json \
+  --payload build/test-payload.json --output build/push-result.json
+```
+
+The push helper checks the explicit HTTPS origin, rejects batch/credential
+overrides and redirects, and records only a safe acceptance result. It never
+registers a device or changes the registration policy. Keep test IDs unique and
+use a fresh output path for each invocation; evidence is never overwritten.
+
+For database proof, query the copied file with the project's locked Realm
+library after running the simulator regression build:
+
+```sh
+python3 scripts/zbark_device.py history \
+  --realm build/before-update/private/app/Documents/bark.realm \
+  --simulator <booted-dedicated-simulator-UDID> --prefix <unique-test-prefix> \
+  --output build/history-before.json
+# Snapshot again after restart/update, then run history for that new copy.
+python3 scripts/zbark_device.py compare-history \
+  --before build/history-before.json --after build/history-after.json \
+  --output build/preservation.json
+python3 -m unittest discover -s scripts -p 'test_*.py'
+```
+
+The simulator here only runs a read-only reader of a **copied physical-device
+database**. It does not simulate delivery. The reader checks actual Realm records,
+hashes all non-test content, and reports plaintext only for the supplied unique
+test prefix. Compare requires every original unexpired record to retain its ID
+and content; naturally elapsed TTLs are excluded. Separately compare snapshot
+server and crypto fingerprints, observe display/extension execution, and
+correlate timestamps with the deployed server's successful POST registration.
+
+Backups contain bearer keys and may contain encryption settings. Preserve them
+locally with the old IPA; file copies are recovery evidence, not a promise that
+CoreDevice supports arbitrary App Group restoration. Do not restore over a newer
+live database or downgrade across an incompatible schema.
+
 1. Preserve the previous IPA and validation record. Record the server list/key
    without posting it in an issue, terminal log or screenshot shared publicly.
    Back up available app data before an update; do not uninstall or clear data.
@@ -160,3 +211,59 @@ Authoritative references: [APNs registration](https://developer.apple.com/docume
 The current handoff directory is `build/zbark-reliability-20261106/` in the original
 client checkout. It contains the new IPA and combined validation report, with
 paths to xcresult, signing and deployment evidence in the isolated worktrees.
+
+## Encryption setup and sender maintenance
+
+Encryption is opt-in; a missing `cryptoSettingFields` entry means no key is
+configured. Never infer a key from a device token or push key. The new
+**Generate an AES-256-GCM key** action fills an empty form using 32 random bytes
+from Apple's secure random generator. Save with Done. The key field is masked;
+generation refuses to overwrite a nonempty key. Existing CBC/ECB/GCM text keys
+remain supported, with lengths checked in UTF-8 bytes.
+
+Generated keys use `keyEncoding=base64` in the shared client configuration. Each
+message must supply a fresh 12-byte GCM nonce as base64 in `iv`, with
+`iv_encoding=base64`. The GCM ciphertext is base64 of ciphertext followed by the
+16-byte authentication tag. Raw legacy IV strings remain supported when no
+encoding is supplied. Neither key nor plaintext belongs on the server.
+
+After saving the device configuration, take a new protected snapshot. Its
+`private/credentials.json` contains the matching crypto settings for local senders:
+
+```sh
+python3 scripts/zbark_device.py push --encrypt \
+  --credentials build/encrypted-baseline/private/credentials.json \
+  --payload build/test-payload.json --output build/encrypted-push.json
+node --test scripts/test_zbark_encrypt.cjs
+```
+
+The Python helper passes private configuration to the Node encryption helper on
+stdin; keys never appear in argv or evidence output. Encryption is opt-in per
+sender: an existing plain HTTP/JSON sender does not become encrypted merely by
+configuring the client. Existing plaintext history is preserved. Copy Example
+now produces a reusable Node script that reads keys from private environment
+configuration, generates a nonce on every run, sends POST JSON and refuses
+redirects. It no longer embeds a reusable fixed nonce or secrets in the script.
+
+Back up the private configuration outside the repository with access restricted
+to the owner. Loss of the encryption key makes encrypted payloads unrecoverable.
+After adopting encoded keys/nonces, rollback only to a build supporting this
+format (build 3 or later); earlier builds still read history but cannot decrypt
+this new wire format. Do not change App Group or overwrite an existing key to
+troubleshoot a sender mismatch.
+
+References: [Node crypto](https://nodejs.org/api/crypto.html#cryptocreatecipherivalgorithm-key-iv-options),
+[Apple secure random](https://developer.apple.com/documentation/security/secrandomcopybytes(_:_:_:)).
+
+## Remote maintenance boundary
+
+The personal client fork is [prur/Bark](https://github.com/prur/Bark). The `fork`
+remote is separate from the read-only Finb `origin`. The maintained client base
+is `zbark`, initially the physically installed `ef22721` iOS baseline; reliability
+changes are delivered by PR from `fix/zbark-reliability`. Upstream master was
+rechecked and is three commits ahead, including a broad watchOS integration that
+changes targets, App Groups and dependency locks. Importing it now would expand
+the four-bundle signing and device-acceptance boundary; it is deliberately deferred
+to a separately validated update. Do not force-push or silently rebase the tested
+release onto that branch. The inherited Cloudflare documentation publishing job
+is guarded to Finb's repository; this fork only needs credential-free regression.

@@ -10,6 +10,7 @@ import RxSwift
 import UIKit
 
 class CryptoSettingController: BaseViewController<CryptoSettingViewModel> {
+    private var keyEncoding: String?
     let algorithmFeild = DropBoxView(values: ["AES128", "AES192", "AES256"])
     let modeFeild = DropBoxView(values: ["CBC", "ECB", "GCM"])
     let paddingField = DropBoxView(values: ["pkcs7"])
@@ -19,7 +20,19 @@ class CryptoSettingController: BaseViewController<CryptoSettingViewModel> {
         textField.font = UIFont.preferredFont(ofSize: 14)
         textField.adjustsFontForContentSizeCategory = true
         textField.placeholder = "enterKey".localized(with: 16)
+        textField.isSecureTextEntry = true
+        textField.accessibilityIdentifier = "crypto.key"
         return textField
+    }()
+
+    let generateButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("generateSecureEncryptionKey".localized, for: .normal)
+        button.titleLabel?.font = UIFont.preferredFont(forTextStyle: .footnote)
+        button.titleLabel?.adjustsFontForContentSizeCategory = true
+        button.titleLabel?.numberOfLines = 0
+        button.accessibilityIdentifier = "crypto.generate"
+        return button
     }()
 
     let doneButton: BKButton = {
@@ -88,6 +101,7 @@ class CryptoSettingController: BaseViewController<CryptoSettingViewModel> {
 
         self.scrollView.addSubview(keyLabel)
         self.scrollView.addSubview(keyTextField)
+        self.scrollView.addSubview(generateButton)
 
         self.scrollView.addSubview(copyButton)
 
@@ -132,11 +146,16 @@ class CryptoSettingController: BaseViewController<CryptoSettingViewModel> {
             make.top.equalTo(keyLabel.snp.bottom).offset(5)
         }
 
+        generateButton.snp.makeConstraints { make in
+            make.left.right.equalTo(keyTextField)
+            make.top.equalTo(keyTextField.snp.bottom).offset(12)
+            make.height.greaterThanOrEqualTo(44)
+        }
         copyButton.snp.makeConstraints { make in
             make.left.equalTo(keyTextField)
             make.right.equalTo(keyTextField)
             make.height.equalTo(42)
-            make.top.equalTo(keyTextField.snp.bottom).offset(25)
+            make.top.equalTo(generateButton.snp.bottom).offset(12)
             make.bottom.equalToSuperview().offset(-20)
         }
 
@@ -158,9 +177,30 @@ class CryptoSettingController: BaseViewController<CryptoSettingViewModel> {
                 algorithm: self.algorithmFeild.currentValue!,
                 mode: self.modeFeild.currentValue!,
                 padding: self.paddingField.currentValue!,
-                key: self.keyTextField.text
+                key: self.keyTextField.text,
+                keyEncoding: self.keyEncoding
             )
         }
+
+        keyTextField.rx.controlEvent(.editingChanged).subscribe(onNext: { [weak self] in
+            // Manually entered keys retain the original UTF-8 format.
+            self?.keyEncoding = nil
+        }).disposed(by: rx.disposeBag)
+        generateButton.rx.tap.subscribe(onNext: { [weak self] in
+            guard let self else { return }
+            guard self.keyTextField.text?.isEmpty != false else {
+                HUDError("encryptionKeyAlreadyPresent".localized)
+                return
+            }
+            do {
+                let fields = try CryptoSettingFields.secureDefaults()
+                self.algorithmFeild.currentValue = fields.algorithm
+                self.modeFeild.currentValue = fields.mode
+                self.paddingField.currentValue = fields.padding
+                self.keyEncoding = fields.keyEncoding
+                self.keyTextField.text = fields.key
+            } catch { HUDError(error.rawString()) }
+        }).disposed(by: rx.disposeBag)
 
         let output = viewModel.transform(input: CryptoSettingViewModel.Input(
             algorithmChanged: self.algorithmFeild
@@ -195,6 +235,7 @@ class CryptoSettingController: BaseViewController<CryptoSettingViewModel> {
                 self?.modeFeild.currentValue = fields.mode
                 self?.paddingField.currentValue = fields.padding
                 self?.keyTextField.text = fields.key
+                self?.keyEncoding = fields.keyEncoding
             }
         }).disposed(by: rx.disposeBag)
 

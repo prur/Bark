@@ -6,9 +6,11 @@ on:
       - master
       - feat/sanbox-bark
       - fix/zbark-reliability
+      - zbark
   pull_request:
     branches:
       - master
+      - zbark
 
 jobs:
   tests:
@@ -44,4 +46,6 @@ jobs:
       run: |
         export LC_ALL=en_US.UTF-8
         export LANG=en_US.UTF-8
+        python3 -m unittest discover -s scripts -p 'test_*.py'
+        node --test scripts/test_zbark_encrypt.cjs
         bundle exec fastlane tests
