@@ -1,6 +1,6 @@
 # Z Bark reliability and maintenance
 
-## Current task (2026-11-06)
+## Delivery checklist (2026-11-06)
 
 Acceptance follows the current source and deployed image. The 2026-10-27 report is
 historical evidence only. Simulator and provider responses do not prove delivery
@@ -16,9 +16,8 @@ on a physical iPhone.
 - [x] Add repeatable signed build, verification and maintenance instructions.
 - [x] Run appropriate tests and produce a current validation record.
 - [x] Commit changes and record the submission and deployment boundary.
-- [ ] Physical device: registration, foreground/background/locked delivery,
-  extension processing, restart and update persistence (device unavailable at
-  initial inventory; not accepted from the old report).
+- [x] Physical device: current registration, foreground/background history, operator-confirmed
+  lock-screen display, extension decryption, app/system restart and in-place update persistence.
 
 Baseline: client `ef22721`, server `67235ff`. Client worktree was clean. Server
 had untracked `.DS_Store` and `bark-server-linux-amd64`; neither belongs to this
@@ -157,7 +156,7 @@ update one record in delivery-time order, and an older retry cannot overwrite a
 newer record. Archiving signals the app before slow media processors. Extension
 completion uses an immutable best-attempt snapshot and consumes its handler once.
 
-## Physical acceptance still required
+## Physical acceptance protocol
 
 Use a connected, unlocked and trusted physical device. Record current client
 commit/build, server commit/image, profile environment and each unique request ID.
@@ -181,7 +180,7 @@ Authoritative references: [APNs registration](https://developer.apple.com/docume
 [extension time budget](https://developer.apple.com/documentation/usernotifications/unnotificationserviceextension),
 [APNs failure reasons](https://developer.apple.com/documentation/usernotifications/handling-notification-responses-from-apns).
 
-## Current validation record (2026-11-06)
+## Initial validation record (2026-11-06, before continuation)
 
 - Client release source: `bc854b2044e5050485e48981fa08c28e953254f3`;
   version 1.0.0, build 2. Archive, export and all four signature/profile checks
@@ -267,3 +266,77 @@ the four-bundle signing and device-acceptance boundary; it is deliberately defer
 to a separately validated update. Do not force-push or silently rebase the tested
 release onto that branch. The inherited Cloudflare documentation publishing job
 is guarded to Finb's repository; this fork only needs credential-free regression.
+
+## Current accepted delivery (2026-11-06 continuation)
+
+The phone now runs **Z Bark 1.0.0 build 4**, exported from clean source
+`85a02d69ef8c3389cb810509bd4d08c4b13658fc`. IPA SHA-256:
+`4f3f5dea3ae2257b9b80ceb33a0467b00e7324c08ccacd4bf0ddec210536617b`.
+All four original Ad Hoc profile UUIDs were reused, with production APNs and
+no Critical Alerts or debug entitlement. Signing identities were unchanged.
+Later commits only add sender tooling and the acceptance ledger, not native app
+code, dependency locks, Bundle IDs or Realm schema.
+
+The physical iPhone 16 Pro (iOS 27.0.1) completed build 1 → 2 → 3 → 4 in-place
+updates. All 29 original Realm records retained their complete content. A full
+phone reboot retained all 39 then-current records, the existing server/key and
+the new encryption configuration. Build 3 → 4 retained all 40 pre-update records.
+After new background encrypted sends and a final app restart, Realm contained
+42 live records, including all expected test IDs and no wrong-key plaintext.
+The server observed successful POST registration against deployed runtime
+`6e19b8a6acb486645960226a1dfcdfd06effd8f5`; all 3 server registrations remained.
+
+Observed cases include foreground/background history, one latest record for a
+repeated ID, archive opt-out, TTL=0 omission, Markdown, missing-image failure,
+correct-key decryption, wrong-key omission followed by successful recovery, and
+new encrypted sends after reboot/update. The operator explicitly confirmed the
+unique lock-screen notification on build 2. This is a physical observation,
+separate from API/provider acceptance. Correct decrypted content was observed
+in the device UI and queried from the copied physical Realm. The simulator was
+only the read-only database reader and the automated test host.
+
+Local xcresult: 15 reported test methods/suites including parameterized cases,
+zero failures. Sender/device tooling: 7 Python tests; Node GCM: 1 test. Native
+release source passed push and PR CI. Server race/vet, 7 Python regressions,
+closed-enrollment/empty-token canary and fresh nonroot database initialization
+passed. Current live source/image/hash and rollback location are in the server
+maintenance document.
+
+The retained handoff is `build/zbark-reliability-20261106-device/` in the original
+client checkout: final IPA, combined validation JSON, xcresult, signing and
+request records, protected raw snapshots and the versioned sender manifest.
+The earlier handoff/report was preserved. Remote PRs:
+[client](https://github.com/prur/Bark/pull/1), [server](https://github.com/prur/bark-server/pull/1).
+
+Remaining boundaries: no live public enrollment window was opened; its failure
+ordering/emergency-disable behavior is covered by local regressions. The
+wrong-key fallback banner itself was not independently observed, although GCM
+authentication rejection, physical history omission and subsequent successful
+physical delivery were verified. Focus/DND behavior, sound, Widget placement,
+positive-TTL expiry on device and the new encrypted format on a locked display
+were not separately accepted. Critical Alerts remain unapproved and disabled.
+
+### Ready-to-use local encrypted sender
+
+The owner-only configuration is `~/.config/zbark/sender.json`. It contains the
+existing push key plus the new encryption key; it must never enter git, a PR,
+screenshots or process arguments. The installed `~/.local/bin/zbark-send` points
+to a versioned standalone bundle under `~/.local/share/zbark/`; its manifest
+records each source hash. It does not depend on keeping this task worktree.
+
+```sh
+~/.local/bin/zbark-send '测试推送' --title 'Z Bark'
+# For sensitive content, read from a protected file instead of shell history:
+~/.local/bin/zbark-send --title 'Z Bark' < message.txt
+# Equivalent directly from an updated source checkout:
+python3 scripts/zbark_send.py '测试推送' --title 'Z Bark'
+```
+
+Each invocation generates a fresh id and 96-bit nonce and requires encryption;
+missing crypto settings fail without plaintext fallback. `--id` allows explicit
+message updates/correlation and `--group` selects a history group. Updating the
+sender changes only the three scripts (`zbark_send.py`, `zbark_device.py`,
+`zbark_encrypt.cjs`), copied to a new versioned bundle with verified hashes before
+changing the launcher. Preserve `~/.config/zbark/sender.json` throughout.
+Other existing senders must explicitly adopt encryption; enabling it on the
+client does not transform their plaintext requests.
