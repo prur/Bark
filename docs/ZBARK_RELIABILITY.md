@@ -334,10 +334,9 @@ python3 scripts/zbark_send.py '测试推送' --title 'Z Bark'
 
 Each invocation generates a fresh id and 96-bit nonce and requires encryption;
 missing crypto settings fail without plaintext fallback. `--id` allows explicit
-message updates/correlation and `--group` selects a history group. Updating the
-sender changes only the three scripts (`zbark_send.py`, `zbark_device.py`,
-`zbark_encrypt.cjs`), copied to a new versioned bundle with verified hashes before
-changing the launcher. Preserve `~/.config/zbark/sender.json` throughout.
+message updates/correlation and `--group` selects a history group. Update the standalone sender with `python3 scripts/install_zbark_sender.py`.
+It verifies all four bundled scripts before atomically changing the two launchers;
+previous bundles remain available. Preserve `~/.config/zbark/sender.json` throughout.
 Other existing senders must explicitly adopt encryption; enabling it on the
 client does not transform their plaintext requests.
 
@@ -393,3 +392,52 @@ Builds 2/3/4 and their raw records are retained as historical checkpoints.
 The local combined report includes the correction, observed scope, CI references,
 source hashes and protected evidence paths. This final native source supersedes
 the build-4 checkpoint; subsequent ledger changes do not change native code.
+
+
+## Daily command and server-maintenance notifications
+
+Install the standalone bundle with `python3 scripts/install_zbark_sender.py`; it
+does not read or modify the existing keys. `zbark-send` keeps its simple interface.
+`~/.local/bin/zbark-run` is the encrypted completion entry for local scripts and
+remote maintenance commands, with the key staying on the Mac:
+
+```sh
+~/.local/bin/zbark-run --label '本机任务' -- /absolute/path/to/job argument
+~/.local/bin/zbark-run --label '通知服务备份检查' -- \
+  ssh -o BatchMode=yes ovh-us-vps sudo /usr/local/bin/zbark-backup status
+~/.local/bin/zbark-run --status
+# Diagnose connectivity/provider rejection first; this deliberately retries pending sends:
+~/.local/bin/zbark-run --flush
+```
+
+Only the explicit label, exit status and elapsed time enter the notification.
+Command arguments and stdout/stderr are not copied into it. Arguments execute
+directly, without an implicit shell. Existing monitoring/Discord paths remain
+active; arbitrary business producers have not been silently migrated.
+No scheduler or new daemon is installed on the Mac. The server's existing daily
+backup timer uses the improved backup entry described in the server guide.
+
+The wrapper checks real encryption availability before starting a command. It
+persists each completion as ciphertext plus a configuration fingerprint in the
+owner-only `~/.local/state/zbark/outbox`, then sends once. A failed send retains
+that event. `--flush` retries at most ten events, using their same IDs/nonces;
+changing a key/configuration blocks old events rather than retargeting them.
+No device key, encryption key, command text or plaintext body is saved in the queue.
+A nonzero task result is preserved. If the task succeeded but notification failed,
+the wrapper returns 75. The wrapper does not cover host power loss/forced kill
+before completion. Queue persistence can fail if storage is full, and reports
+whether the event was queued; a full queue is rejected before starting work.
+
+This is explicit retry, not exactly-once delivery. An ambiguous network failure
+may mean APNs already accepted the first request. A repeated ID updates history
+but may still show another banner. Inspect pending events and do not blindly
+retry permanent provider rejection. A successful wrapper result is server/provider
+acceptance; verify display and the copied physical Realm separately.
+
+For sender recovery, back up the owner-only `sender.json` and a versioned bundle
+to an encrypted archive outside the repository. Keep the recovery password
+separately, and decrypt only to a fresh mode-0700 directory. Compare configuration
+fingerprints and use `zbark-send --config /isolated/copy/sender.json` for one
+explicit recovery test. Never restore over current preferences, overwrite the
+existing crypto key, uninstall the app, or use this as an App Group restore claim.
+History recovery still requires the compatible client/Realm procedure above.
