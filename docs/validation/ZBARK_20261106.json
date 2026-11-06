@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-06",
+  "client": {
+    "release_source": "d670ccc650d7b301d88a4522489bdb5477dbe1d7",
+    "version": "1.0.0",
+    "build": 5,
+    "ipa_sha256": "e723ff1b753c8abf921c784acbfd20ae51d59753668f5b6dfa7271ad1ecf04e8",
+    "original_profiles_reused": true,
+    "critical_alerts": false,
+    "realm_schema": 19
+  },
+  "server": {
+    "runtime_source": "6e19b8a6acb486645960226a1dfcdfd06effd8f5",
+    "image": "bark-server:zbark-6e19b8a6acb4",
+    "image_id": "sha256:2f93658f6ddf211b3bbbdc74c1afbf8b3c074b6ae7657ddb0e661c4db04f9f83",
+    "registration_mode": "existing",
+    "registration_count": 3,
+    "empty_token_canary": "passed",
+    "fresh_nonroot_database": "passed"
+  },
+  "physical": {
+    "device": "iPhone 16 Pro, iOS 27.0.1",
+    "initial_records_preserved": 29,
+    "full_reboot_unchanged_records": 39,
+    "build3_to_build4_unchanged_records": 40,
+    "final_live_records": 44,
+    "server_key_preserved": true,
+    "encryption_preserved": true,
+    "algorithm": "AES-256-GCM",
+    "locked_display": "operator confirmed on build 2",
+    "decryption": "correct key and post-reboot/update delivery verified",
+    "wrong_key": "not archived; recovery accepted; fallback banner unobserved",
+    "build4_to_build5_unchanged_records": 42,
+    "cold_restart_option_and_pid_verified": true,
+    "earlier_restart_flag_calls": "re-entry only; corrected cold start documented",
+    "stored_TTL_replacement_expired_without_resurrection": true,
+    "two_queued_versions_on_physical_device": "precondition not established; covered by deterministic regression"
+  },
+  "automation": {
+    "xcresult_reported_tests": 17,
+    "native_failed": 0,
+    "client_python": 7,
+    "node": 1,
+    "server_go_race_vet": "passed",
+    "server_python": 7
+  },
+  "delivery": {
+    "client_pr": "https://github.com/prur/Bark/pull/1",
+    "server_pr": "https://github.com/prur/bark-server/pull/1"
+  },
+  "limits": [
+    "No live timed public enrollment opening",
+    "Wrong-key fallback banner not independently observed",
+    "New encrypted format not separately observed on locked display",
+    "Other senders require explicit encryption adoption",
+    "Two simultaneous pending-file versions were not established physically; regression-only coverage"
+  ]
+}

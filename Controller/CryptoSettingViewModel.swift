@@ -11,15 +11,6 @@ import Foundation
 import RxCocoa
 import RxSwift
 
-private func randomIv(mode: String) -> String {
-    let length = ["CBC": 16, "GCM": 12][mode] ?? 0
-    guard length > 0 else {
-        return ""
-    }
-    let chars = Array("0123456789abcdef")
-    return String((0..<length).map { _ in chars.randomElement()! })
-}
-
 class CryptoSettingViewModel: ViewModel, ViewModelType {
     struct Input {
         let algorithmChanged: Driver<String>
@@ -113,90 +104,8 @@ class CryptoSettingViewModel: ViewModel, ViewModelType {
                     return false
                 }
             }
-        let copy = Driver.combineLatest(copyScript, dependencies.deviceKey, dependencies.serverAddress)
-            .compactMap { fields, deviceKey, serverAddress -> String? in
-                let key = fields.key ?? ""
-                let iv = randomIv(mode: fields.mode)
-                var previewFields = fields
-                previewFields.iv = iv
-                if fields.mode == "GCM" {
-                    return
-                        """
-                        // Documentation: \("encryptionUrl".localized)
-                        
-                        const crypto = require('crypto');
-
-
-                        // bark key
-                        const deviceKey = '\(deviceKey)';
-                        // push payload
-                        const json = JSON.stringify({ body: "test", sound: "birdsong" });
-
-                        // \("keyComment".localized(with: Int(fields.algorithm.suffix(3))! / 8))
-                        const key = '\(key)';
-                        // \("ivComment".localized)
-                        const iv = '\(iv)';
-
-                        // AES-\(fields.algorithm.suffix(3))-GCM
-                        const cipher = crypto.createCipheriv('aes-\(fields.algorithm.suffix(3))-gcm', Buffer.from(key, 'utf8'), Buffer.from(iv, 'utf8'));
-                        const encrypted = Buffer.concat([
-                          cipher.update(json, 'utf8'),
-                          cipher.final()
-                        ]);
-                        const tag = cipher.getAuthTag()
-                        
-                        const combined = Buffer.concat([encrypted, tag])
-                        let ciphertext = combined.toString('base64')
-
-                        // \("consoleComment".localized) "\((try? AESCryptoModel(cryptoFields: previewFields).encrypt(text: "{\"body\":\"test\",\"sound\":\"birdsong\"}")) ?? "")"
-                        console.log(ciphertext);
-
-                        // \("ciphertextComment".localized)
-                        const pushUrl = `\(serverAddress)/${deviceKey}?ciphertext=${encodeURIComponent(ciphertext)}&iv=${encodeURIComponent(iv)}`;
-
-                        (async () => {
-                          try {
-                            const response = await fetch(pushUrl);
-                            console.log(await response.text());
-                          } catch (err) {
-                            console.error(err);
-                          }
-                        })();
-                        """
-                } else {
-                    return
-                        """
-                        #!/usr/bin/env bash
-                        
-                        # Documentation: \("encryptionUrl".localized)
-                        
-                        set -e
-
-                        # bark key
-                        deviceKey='\(deviceKey)'
-                        # push payload
-                        json='{"body": "test", "sound": "birdsong"}'
-
-                        # \("keyComment".localized(with: Int(fields.algorithm.suffix(3))! / 8)) )
-                        key='\(key)'
-                        # \("ivComment".localized)
-                        iv='\(iv)'
-
-                        # \("opensslEncodingComment".localized)
-                        key=$(printf $key | xxd -ps -c 200)
-                        iv=$(printf $iv | xxd -ps -c 200)
-                        
-                        # \("base64Notice".localized)
-                        ciphertext=$(echo -n $json | openssl enc -aes-\(fields.algorithm.suffix(3))-\(fields.mode.lowercased()) -K $key \(iv.count > 0 ? "-iv $iv " : "")| base64)
-
-                        # \("consoleComment".localized) "\((try? AESCryptoModel(cryptoFields: previewFields).encrypt(text: "{\"body\": \"test\", \"sound\": \"birdsong\"}")) ?? "")"
-                        echo $ciphertext
-                        
-                        # \("ciphertextComment".localized)
-                        curl --data-urlencode "ciphertext=$ciphertext"\(iv.count == 0 ? "" : " --data-urlencode \"iv=\(iv)\"") \(serverAddress)/$deviceKey
-                        """
-                }
-            }
+        let copy = Driver.combineLatest(copyScript, dependencies.serverAddress)
+            .compactMap { fields, address in try? Self.senderExample(fields: fields, serverAddress: address) }
 
         return Output(
             initial: Driver.just((
@@ -214,6 +123,44 @@ class CryptoSettingViewModel: ViewModel, ViewModelType {
         )
     }
 
+    /// No secrets or fixed nonces are embedded in the copied, reusable example.
+    static func senderEndpoint(serverAddress: String) throws -> String {
+        guard let url = URL(string: serverAddress), url.host != nil,
+              ["https", "http"].contains(url.scheme) else { throw "Invalid server address" }
+        return url.appendingPathComponent("push").absoluteString
+    }
+
+    static func senderExample(fields: CryptoSettingFields, serverAddress: String) throws -> String {
+        let endpoint = String(decoding: try JSONEncoder().encode(senderEndpoint(serverAddress: serverAddress)), as: UTF8.self)
+        let keyEncoding = fields.keyEncoding == "base64" ? "base64" : "utf8"
+        let ivLength = ["CBC": 16, "GCM": 12][fields.mode] ?? 0
+        return """
+        // Set ZBARK_DEVICE_KEY and ZBARK_CRYPTO_KEY privately before running.
+        // ZBARK_CRYPTO_KEY uses \(keyEncoding) encoding for this configuration.
+        const crypto = require('node:crypto');
+        const pushUrl = \(endpoint);
+        if (!process.env.ZBARK_DEVICE_KEY || !process.env.ZBARK_CRYPTO_KEY) throw new Error('Missing private key configuration');
+        const key = Buffer.from(process.env.ZBARK_CRYPTO_KEY, '\(keyEncoding)');
+        const iv = \(ivLength) ? crypto.randomBytes(\(ivLength)) : null;
+        const json = JSON.stringify({id: crypto.randomUUID(), body: 'Encrypted test', isArchive: '1'});
+        const cipher = crypto.createCipheriv('aes-\(fields.algorithm.suffix(3))-\(fields.mode.lowercased())', key, iv);
+        cipher.setAutoPadding(\(fields.padding == "pkcs7" ? "true" : "false"));
+        const encrypted = Buffer.concat([cipher.update(json, 'utf8'), cipher.final()]);
+        const ciphertext = \(fields.mode == "GCM" ? "Buffer.concat([encrypted, cipher.getAuthTag()])" : "encrypted").toString('base64');
+        const payload = {device_key: process.env.ZBARK_DEVICE_KEY, ciphertext};
+        if (iv) { payload.iv = iv.toString('base64'); payload.iv_encoding = 'base64'; }
+        (async () => {
+          const response = await fetch(pushUrl, {
+            method: 'POST', redirect: 'error', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+          });
+          const result = await response.json();
+          console.log({http_status: response.status, code: result.code});
+          if (!response.ok || result.code !== 200) process.exitCode = 1;
+        })().catch(() => { console.error('Push failed'); process.exitCode = 1; });
+        """
+    }
+
     /// IV 不再由用户在设置页输入，这里保留老用户已保存的 iv 作为兜底
     /// 仅保留与当前 mode 长度匹配的 iv，避免切换 mode 后 iv 不适用
     private func preservingIv(_ fields: CryptoSettingFields) -> CryptoSettingFields {
@@ -222,7 +169,10 @@ class CryptoSettingViewModel: ViewModel, ViewModelType {
             return fields
         }
         let expect = ["CBC": 16, "GCM": 12][fields.mode] ?? 0
-        fields.iv = iv.count == expect ? iv : nil
+        let previous = dependencies.settingFieldRelay.value
+        let bytes = previous?.ivEncoding == "base64" ? Data(base64Encoded: iv) : iv.data(using: .utf8)
+        fields.iv = bytes?.count == expect ? iv : nil
+        fields.ivEncoding = fields.iv == nil ? nil : previous?.ivEncoding
         return fields
     }
 }

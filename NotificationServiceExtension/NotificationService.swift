@@ -9,18 +9,17 @@
 import UserNotifications
 
 class NotificationService: UNNotificationServiceExtension {
-    /// 当前 ContentHandler，主要用来 serviceExtensionTimeWillExpire 时交付推送
-    var currentContentHandler: ((UNNotificationContent) -> Void)? = nil
-    /// 当前正在处理的推送内容
-    var currentBestAttemptContent: UNMutableNotificationContent? = nil
+    private var delivery: NotificationDelivery?
+    private var processingTask: Task<Void, Never>?
     
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        Task {
+        let delivery = NotificationDelivery(content: request.content, handler: contentHandler)
+        self.delivery = delivery
+        processingTask = Task {
             guard var bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent) else {
-                contentHandler(request.content)
+                delivery.finish()
                 return
             }
-            self.currentContentHandler = contentHandler
             
             // 所有的 processor 按顺序从上往下对推送进行处理
             // ciphertext 需要放在最前面，有可能所有的推送数据都在密文里
@@ -40,17 +39,21 @@ class NotificationService: UNNotificationServiceExtension {
             
             // 各个 processor 依次对推送进行处理
             for processor in processors.map({ $0.processor }) {
+                guard !Task.isCancelled, !delivery.isFinished else { return }
                 do {
                     bestAttemptContent = try await processor.process(identifier: request.identifier, content: bestAttemptContent)
-                    self.currentBestAttemptContent = bestAttemptContent
+                    delivery.update(bestAttemptContent)
                 } catch NotificationContentProcessorError.error(let content) {
-                    contentHandler(content)
+                    delivery.finish(content)
+                    return
+                } catch {
+                    delivery.finish()
                     return
                 }
             }
             
             // 处理完后交付推送
-            contentHandler(bestAttemptContent)
+            delivery.finish(bestAttemptContent)
             
             // 发送 Darwin Notification 通知主 APP 有新消息
             CFNotificationCenterPostNotification(
@@ -65,11 +68,7 @@ class NotificationService: UNNotificationServiceExtension {
 
     override func serviceExtensionTimeWillExpire() {
         super.serviceExtensionTimeWillExpire()
-        guard let contentHandler = currentContentHandler,
-              let bestAttemptContent = currentBestAttemptContent
-        else {
-            return
-        }
-        contentHandler(bestAttemptContent)
+        processingTask?.cancel()
+        delivery?.finish()
     }
 }

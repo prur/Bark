@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B06A00000000000000000102 /* NotificationDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06A00000000000000000002 /* NotificationDelivery.swift */; };
+		B06A00000000000000000202 /* NotificationDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06A00000000000000000002 /* NotificationDelivery.swift */; };
+		B06A00000000000000000101 /* PendingMessageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06A00000000000000000001 /* PendingMessageStore.swift */; };
+		B06A00000000000000000201 /* PendingMessageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06A00000000000000000001 /* PendingMessageStore.swift */; };
 		0603706720E1E31600F4CA05 /* Defines.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0603706620E1E31600F4CA05 /* Defines.swift */; };
 		0603706B20E20A7C00F4CA05 /* String+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0603706A20E20A7C00F4CA05 /* String+Extension.swift */; };
 		0603706D20E23EC000F4CA05 /* BarkSFSafariViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0603706C20E23EC000F4CA05 /* BarkSFSafariViewController.swift */; };
@@ -294,6 +298,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B06A00000000000000000002 /* NotificationDelivery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDelivery.swift; sourceTree = "<group>"; };
+		B06A00000000000000000001 /* PendingMessageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingMessageStore.swift; sourceTree = "<group>"; };
 		0603706620E1E31600F4CA05 /* Defines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Defines.swift; sourceTree = "<group>"; };
 		0603706A20E20A7C00F4CA05 /* String+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Extension.swift"; sourceTree = "<group>"; };
 		0603706C20E23EC000F4CA05 /* BarkSFSafariViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarkSFSafariViewController.swift; sourceTree = "<group>"; };
@@ -709,6 +715,8 @@
 				06F08EA329B098DD006AB9CA /* CryptoSettingManager.swift */,
 				0653677729B727A60038BDB8 /* CryptoSettingRelay.swift */,
 				06F08EA629B1DDFE006AB9CA /* Error+Extension.swift */,
+				B06A00000000000000000001 /* PendingMessageStore.swift */,
+				B06A00000000000000000002 /* NotificationDelivery.swift */,
 				06E944742C07012E00AC86AB /* RealmConfiguration.swift */,
 				062218512F741C91003E2DA0 /* MessageImageCleaner.swift */,
 				062218552F741C91003E2DA0 /* MessageDeletionCoordinator.swift */,
@@ -1454,6 +1462,8 @@
 				0667D194247D1BA0005DE2ED /* Date+Extension.swift in Sources */,
 				0604F7DF20620D4900B32F09 /* ServerManager.swift in Sources */,
 				0667D192247D162C005DE2ED /* MessageTableViewCell.swift in Sources */,
+				B06A00000000000000000101 /* PendingMessageStore.swift in Sources */,
+				B06A00000000000000000102 /* NotificationDelivery.swift in Sources */,
 				06E944762C07013000AC86AB /* RealmConfiguration.swift in Sources */,
 				06EF49152D682A99008B91D2 /* PushResponse.swift in Sources */,
 				0603706720E1E31600F4CA05 /* Defines.swift in Sources */,
@@ -1529,6 +1539,8 @@
 				06697FF92F71ED9600C4680E /* WidgetHistorySnapshotStore.swift in Sources */,
 				063AE3F82F7511AF00048718 /* WidgetHistorySnapshotSupport.swift in Sources */,
 				069C6CA92ED03F07007244BB /* BKColor.swift in Sources */,
+				B06A00000000000000000201 /* PendingMessageStore.swift in Sources */,
+				B06A00000000000000000202 /* NotificationDelivery.swift in Sources */,
 				06E944752C07012E00AC86AB /* RealmConfiguration.swift in Sources */,
 				06E944732C06FF9200AC86AB /* ArchiveProcessor.swift in Sources */,
 				06E9447A2C0704E500AC86AB /* ImageDownloader.swift in Sources */,

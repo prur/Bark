@@ -8,6 +8,7 @@
 
 import CryptoSwift
 import Foundation
+import Security
 
 enum Algorithm: String {
     case aes128 = "AES128"
@@ -39,6 +40,18 @@ struct CryptoSettingFields: Codable {
     let padding: String
     let key: String?
     var iv: String?
+    var keyEncoding: String? = nil
+    var ivEncoding: String? = nil
+
+    /// Full 256-bit key generated on device. Existing configurations are never replaced.
+    static func secureDefaults() throws -> CryptoSettingFields {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+            throw "Unable to generate a secure encryption key"
+        }
+        return CryptoSettingFields(algorithm: "AES256", mode: "GCM", padding: "noPadding",
+                                   key: Data(bytes).base64EncodedString(), keyEncoding: "base64")
+    }
 }
 
 struct AESCryptoModel {
@@ -52,7 +65,8 @@ struct AESCryptoModel {
         guard let algorithm = Algorithm(rawValue: cryptoFields.algorithm) else {
             throw "Invalid algorithm"
         }
-        guard let key = cryptoFields.key, algorithm.keyLength == key.count else {
+        guard let key = cryptoFields.key,
+              algorithm.keyLength == (try decodedBytes(key, encoding: cryptoFields.keyEncoding)).count else {
             throw String(format: "enterKey".localized, algorithm.keyLength)
         }
         guard algorithm.modes.contains(cryptoFields.mode) else {
@@ -64,16 +78,25 @@ struct AESCryptoModel {
         return key
     }
 
+    private static func decodedBytes(_ value: String, encoding: String?) throws -> [UInt8] {
+        guard let encoding else { return Array(value.utf8) }
+        guard encoding == "base64", let data = Data(base64Encoded: value) else {
+            throw "Invalid Base64 key or IV encoding"
+        }
+        return Array(data)
+    }
+
     /// 校验 iv 的长度并返回，CBC/GCM 必须传 iv
-    private static func iv(for fields: CryptoSettingFields) throws -> String {
+    private static func iv(for fields: CryptoSettingFields) throws -> [UInt8] {
         guard ["CBC", "GCM"].contains(fields.mode) else {
-            return ""
+            return []
         }
         let expectIVLength = ["CBC": 16, "GCM": 12][fields.mode] ?? 0
-        guard let ivField = fields.iv, ivField.count == expectIVLength else {
+        guard let ivField = fields.iv,
+              (try decodedBytes(ivField, encoding: fields.ivEncoding)).count == expectIVLength else {
             throw String(format: "enterIv".localized, expectIVLength)
         }
-        return ivField
+        return try decodedBytes(ivField, encoding: fields.ivEncoding)
     }
 
     init(cryptoFields: CryptoSettingFields) throws {
@@ -83,11 +106,11 @@ struct AESCryptoModel {
         let mode: BlockMode
         switch cryptoFields.mode {
         case "CBC":
-            mode = CBC(iv: iv.bytes)
+            mode = CBC(iv: iv)
         case "ECB":
             mode = ECB()
         case "GCM":
-            mode = GCM(iv: iv.bytes, mode: .combined)
+            mode = GCM(iv: iv, mode: .combined)
         default:
             throw "Invalid Mode"
         }
@@ -105,7 +128,7 @@ struct AESCryptoModel {
         self.key = key
         self.mode = mode
         self.padding = padding
-        self.aes = try AES(key: key.bytes, blockMode: self.mode, padding: self.padding)
+        self.aes = try AES(key: Self.decodedBytes(key, encoding: cryptoFields.keyEncoding), blockMode: self.mode, padding: self.padding)
     }
 
     func encrypt(text: String) throws -> String {

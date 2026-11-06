@@ -6,8 +6,8 @@
 //  Copyright © 2024 Fin. All rights reserved.
 //
 
-import CryptoKit
 import Foundation
+import os
 
 class ArchiveProcessor: NotificationContentProcessor {
     func process(identifier: String, content bestAttemptContent: UNMutableNotificationContent) async throws -> UNMutableNotificationContent {
@@ -76,25 +76,16 @@ class ArchiveProcessor: NotificationContentProcessor {
                 messageDict["expireDate"] = expireDate.timeIntervalSince1970
             }
 
-            // 写入 plist 文件
+            // A failed archive must not prevent notification delivery.
             if let groupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.cc.sanbox.bark") {
-                let pendingMessagesDir = groupUrl.appendingPathComponent("pending_messages")
-                
-                // 创建目录（如果不存在）
-                try? FileManager.default.createDirectory(at: pendingMessagesDir, withIntermediateDirectories: true, attributes: nil)
-                
-                // 使用 SHA256 hash 作为安全的文件名
-                let safeFilename: String
-                if let data = messageId.data(using: .utf8) {
-                    let hash = SHA256.hash(data: data)
-                    safeFilename = hash.compactMap { String(format: "%02x", $0) }.joined()
-                } else {
-                    safeFilename = UUID().uuidString
+                do {
+                    try PendingMessageStore(directory: groupUrl.appendingPathComponent("pending_messages")).save(messageDict)
+                    // Notify immediately after durable handoff, before media or
+                    // call processors can consume the extension's time budget.
+                    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("com.bark.newmessage" as CFString), nil, nil, true)
+                } catch {
+                    Logger(subsystem: "cc.sanbox.bark", category: "history").error("Pending history write failed; notification delivery continues")
                 }
-
-                let plistUrl = pendingMessagesDir.appendingPathComponent("\(safeFilename).plist")
-                let dict = NSDictionary(dictionary: messageDict)
-                dict.write(to: plistUrl, atomically: true)
             }
 
             let snapshotItem = WidgetHistoryMessage(

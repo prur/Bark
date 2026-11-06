@@ -95,40 +95,25 @@ class ServerListViewModel: ViewModel, ViewModelType {
             .bind(to: showSnackbar)
             .disposed(by: rx.disposeBag)
 
-        // 对重置的旧 key 发送错误的 deviceToken, 使其失效。
-        resetServer.filter { ($0.2?.count ?? 0) > 0 && $0.0.key.count > 0 }.flatMapLatest {
-            BarkApi.provider
-                .request(.register(address: $0.0.address, key: $0.0.key, devicetoken: "deleted"))
-                .filterResponseError()
-        }
-        .subscribe()
-        .disposed(by: rx.disposeBag)
-
         // 发送重置请求
         let serverReseted = resetServer.filter { ($0.2?.count ?? 0) > 0 }
-            .flatMapLatest { r -> Observable<Result<JSON, ApiError>> in
+            .flatMapLatest { r -> Observable<String?> in
                 let server = r.0
-                let newKey = r.1
-                let deviceToken = r.2!
-                return BarkApi.provider
-                    .request(.register(address: server.address, key: newKey, devicetoken: deviceToken))
-                    .filterResponseError()
-            }
-            .map { result -> String? in
-                switch result {
-                case .success(let json):
-                    return json["data", "key"].rawString()
-                case .failure:
-                    return nil
+                return ServerManager.shared.resetServerKey(server: server, requestedKey: r.1, token: r.2!) { key, token in
+                    BarkApi.provider
+                        .request(.register(address: server.address, key: key, devicetoken: token))
+                        .filterResponseError()
+                        .map { result in
+                            switch result {
+                            case .success(let json): return ServerManager.registrationKey(from: json)
+                            case .failure: return nil
+                            }
+                        }
                 }
             }.share()
 
         // 重置成功后，更新本地服务器列表
-        let serverResetSuccess = serverReseted.compactMap { $0 }.withLatestFrom(input.resetServer) { newKey, r in
-            let server = r.0
-            server.key = newKey
-            ServerManager.shared.updateServerKey(server: server)
-        }.share()
+        let serverResetSuccess = serverReseted.compactMap { $0 }.map { _ in () }.share()
 
         // 重置失败提示
         serverReseted.filter { $0 == nil }
@@ -162,6 +147,7 @@ class ServerListViewModel: ViewModel, ViewModelType {
                 Observable.just(()),
                 serverDeleted,
                 serverResetSuccess,
+                ServerManager.shared.serverKeyUpdatedRelay.asObservable(),
                 input.setServerName.map { _ in () }.asObservable(),
                 serverStateChanged.asObservable()
             )
