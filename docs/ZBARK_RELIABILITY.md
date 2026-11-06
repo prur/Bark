@@ -612,3 +612,43 @@ and theft boundary with its locally protected recovery password.
 
 References: Apple's [calendar scheduling behavior](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/ScheduledJobs.html)
 and [APNs request expiration](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+## Installed backup watch acceptance and merge closeout
+
+[PR #3](https://github.com/prur/Bark/pull/3) merged as `f0a8fab`, followed by the
+cached-password correction in [PR #4](https://github.com/prur/Bark/pull/4), merged
+as `bec0ea3`. Both exact heads completed code/security review, had no unresolved
+review thread, and passed their native PR workflows before SHA-guarded merging.
+The merge trees exactly match their respective reviewed heads.
+
+The installed standalone bundle is `sender-1ea901ce9395`, matching final tooling
+source `2b849fd`. Its actual launchd entry ran successfully with exit 0, healthy
+backup/mirror status and no pending alert. The old bundles and previous launch
+agent definition remain available. Original sender/password/recovery file hashes
+and the original checkout statuses remained unchanged. The server maintenance
+branch stays at `3d2e3b2`. This delivery did not change the server runtime/helper
+or native app, and performed no signing operation. Existing-only registration and Critical Alerts
+boundaries remain intact.
+
+Thirty Python regressions and the Node GCM test pass. The real off-host archive
+was checked using the current recovery password, all 17 inner file hashes and
+the full registration fingerprint matched, and no plaintext archive was written.
+Missing/wrong-password trials used separate fixture paths against that copy;
+returning to the original password path recovered without changing the archive.
+An isolated initial transport failure retained ciphertext; same-ID replay and a
+separate recovery event both received server acceptance. Both messages explicitly
+identified themselves as drills. A further unchanged-health check was silent.
+Physical display and Realm receipt were not repeated or claimed for these IDs.
+
+The existing daily timer naturally ran at 11:30:01 Asia/Shanghai. Its new
+`notify-data-20261106_033002-cbdabe55.tar.gz.enc` passed the server's isolated
+restore drill with the same three registrations/fingerprint. The installed watch
+then copied it, decrypted it and matched all 17 file hashes, with no extra alert.
+That observation used a kickstart of the installed definition; the next hourly
+calendar tick itself was not waited for. The archive hash is in the JSON ledger.
+
+Both post-merge workflows passed, including final merge
+[run 42156220950](https://github.com/prur/Bark/actions/runs/42156220950). See `docs/validation/ZBARK_WATCH_20261106.json` and protected
+local evidence under `build/backup-watch-20261106/` for source, test, installation
+and distinct acceptance records. No third-location/password-vault or full-host
+restore proof is added by this delivery.

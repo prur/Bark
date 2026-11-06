@@ -1,0 +1,163 @@
+{
+  "date": "2026-11-06",
+  "scope": "Hourly backup health, encrypted transition alerts and verified off-host recovery copies",
+  "sources": {
+    "watch_initial": "efcd164ab481b9589dba423387a51c288146c264",
+    "watch_final": "2b849fd0255cd008d0f68d29fa5893f4737a982a",
+    "client_merge": "bec0ea3045d64d265db43e2a464718fcab6b4b5b",
+    "server_runtime": "6e19b8a6acb486645960226a1dfcdfd06effd8f5",
+    "server_helper": "f17001adb9ca8e5cb982d4f1a8c9089163f34462"
+  },
+  "pull_requests": [
+    {
+      "url": "https://github.com/prur/Bark/pull/3",
+      "merge": "f0a8fab86a578386cdc170bf3690fdca362532d0",
+      "code_review": "completed",
+      "security_review": "completed",
+      "unresolved_threads": 0
+    },
+    {
+      "url": "https://github.com/prur/Bark/pull/4",
+      "merge": "bec0ea3045d64d265db43e2a464718fcab6b4b5b",
+      "code_review": "completed",
+      "security_review": "completed",
+      "unresolved_threads": 0
+    }
+  ],
+  "ci": [
+    {
+      "run": 42153497111,
+      "type": "PR #3",
+      "conclusion": "success",
+      "source": "efcd164ab481b9589dba423387a51c288146c264",
+      "url": "https://github.com/prur/Bark/actions/runs/42153497111"
+    },
+    {
+      "run": 42154462788,
+      "type": "PR #3 merge",
+      "conclusion": "success",
+      "source": "f0a8fab86a578386cdc170bf3690fdca362532d0",
+      "url": "https://github.com/prur/Bark/actions/runs/42154462788"
+    },
+    {
+      "run": 42154684777,
+      "type": "PR #4",
+      "conclusion": "success",
+      "source": "2b849fd0255cd008d0f68d29fa5893f4737a982a",
+      "url": "https://github.com/prur/Bark/actions/runs/42154684777"
+    },
+    {
+      "type": "PR #4 merge",
+      "conclusion": "success",
+      "run": 42156220950,
+      "source": "bec0ea3045d64d265db43e2a464718fcab6b4b5b",
+      "url": "https://github.com/prur/Bark/actions/runs/42156220950"
+    }
+  ],
+  "regression": {
+    "python": 30,
+    "node_gcm": "passed",
+    "native_workspace": "passed in both PR workflows"
+  },
+  "installation": {
+    "bundle": "sender-1ea901ce9395",
+    "matches_final_source": true,
+    "launch_agent": "cc.sanbox.zbark.backup-watch",
+    "schedule": "hourly at minute 45, on load and calendar catch-up on wake",
+    "last_exit": 0,
+    "healthy": true,
+    "pending_alerts": 0,
+    "older_bundles_and_definition_preserved": true,
+    "launchd_runs_after_final_install": 2,
+    "latest_checked_at": 1793935856.673033
+  },
+  "notification": {
+    "first_transport_failure_retained_ciphertext": true,
+    "retry_same_id_and_envelope": true,
+    "failure_acceptance": {
+      "id": "zbark-watch-275be79b-92e2-42e4-9fd9-a26c58071379",
+      "http_status": 200,
+      "application_code": 200,
+      "sent_at_utc": "2026-11-06T02:57:38.534146+00:00",
+      "boundary": "server/provider acceptance only; correlate with device display, extension and Realm"
+    },
+    "recovery_acceptance": {
+      "id": "zbark-watch-280d1091-84fa-4b95-be82-ed5c78e03fa5",
+      "http_status": 200,
+      "application_code": 200,
+      "sent_at_utc": "2026-11-06T02:57:41.680290+00:00",
+      "boundary": "server/provider acceptance only; correlate with device display, extension and Realm"
+    },
+    "unchanged_health_silent": true,
+    "max_network_attempts": 3,
+    "minimum_retry_interval_hours": 1,
+    "pending_expiration_hours": 6,
+    "provider_expiration_hours": 24,
+    "http_rejection_and_config_change": "block automatic replay",
+    "expired_or_exhausted_event": "nonzero status; explicit current-state retry after diagnosis"
+  },
+  "preservation": {
+    "sender_config_password_recovery_hashes_unchanged": true,
+    "original_worktree_statuses_unchanged": true,
+    "no_key_or_signing_operation": true,
+    "no_native_deployment": true,
+    "existing_only_registration_preserved": true,
+    "critical_alerts_not_enabled": true,
+    "existing_channels_preserved": true
+  },
+  "boundaries": [
+    "No repeated physical display/history or app installation acceptance",
+    "No local Docker/full-host/ntfy recovery drill repeated",
+    "Mac power off/logout and push-service outage still limit alerting",
+    "No third-location or password-vault recovery verified",
+    "Local retries expire after 6 hours; existing provider expiration remains 24 hours"
+  ],
+  "local_evidence": "build/backup-watch-20261106/",
+  "cached_password_validation": {
+    "missing_password_rejected": true,
+    "wrong_password_rejected": true,
+    "restored_existing_password": {
+      "encrypted_sha256": "0c34b1bac8505a0dd3577304e6f1a7722c887701c0ea6c3d83e9dbd8970e383a",
+      "manifest_files": 17,
+      "password_decryption": true,
+      "all_manifest_hashes_match": true,
+      "plaintext_written": false,
+      "server_isolated_drill": true,
+      "local_runtime_drill": false
+    },
+    "encrypted_archive_unchanged": true
+  },
+  "natural_daily_backup": {
+    "server_trigger": "existing daily timer, 2026-11-06 03:30:01 UTC / 11:30:01 Asia/Shanghai",
+    "server_service_exit": 0,
+    "server_registration_count": 3,
+    "registration_fingerprint_matches_previous": true,
+    "bark_stop_start_seconds": 0.502,
+    "watch_trigger": "manual kickstart of installed hourly definition after the natural backup; hourly calendar tick not waited for",
+    "observed": {
+      "status": "ok",
+      "checked_at": 1793935856.673033,
+      "last_good_at": 1793935856.673033,
+      "recovery": {
+        "archive": "notify-data-20261106_033002-cbdabe55.tar.gz.enc",
+        "created_at_utc": "2026-11-06T03:30:03.666014+00:00",
+        "encrypted_sha256": "b195fed5577b874f2b2c79c830669896fa3c1ec74923fa6b3bec844f445819a6",
+        "manifest_files": 17,
+        "password_decryption": true,
+        "all_manifest_hashes_match": true,
+        "plaintext_written": false,
+        "server_isolated_drill": true,
+        "local_runtime_drill": false
+      },
+      "pending_alert": false,
+      "check_stale": false,
+      "alert_attempts": 0,
+      "alert_blocked": false
+    },
+    "launchd": [
+      "runs = 2",
+      "last exit code = 0"
+    ]
+  },
+  "verified_at_utc": "2026-11-06T03:34:03.260180+00:00"
+}
