@@ -1,0 +1,86 @@
+{
+  "date": "2026-11-06",
+  "client": {
+    "installed_version": "1.0.0",
+    "installed_build": 5,
+    "native_release_source": "d670ccc650d7b301d88a4522489bdb5477dbe1d7",
+    "sender_source": "8577eb46a2826274e2fd55cb59a9315ad334fef3",
+    "ipa_sha256": "e723ff1b753c8abf921c784acbfd20ae51d59753668f5b6dfa7271ad1ecf04e8",
+    "original_profiles_reverified": true,
+    "critical_alerts": false,
+    "realm_schema": 19
+  },
+  "server": {
+    "runtime_source": "6e19b8a6acb486645960226a1dfcdfd06effd8f5",
+    "runtime_image_id": "sha256:2f93658f6ddf211b3bbbdc74c1afbf8b3c074b6ae7657ddb0e661c4db04f9f83",
+    "backup_tool_source": "f17001adb9ca8e5cb982d4f1a8c9089163f34462",
+    "registration_mode": "existing",
+    "registrations": 3,
+    "daily_backup_entry_deployed": true,
+    "daily_systemd_entry_verified": true,
+    "other_services_restarted": false,
+    "successful_unit_backup_stop_start_seconds": 0.505,
+    "total_trial_downtime": "not measured; failed trials restarted Bark and published no recovery point"
+  },
+  "physical": {
+    "old_records_preserved": 44,
+    "final_records": 52,
+    "new_decrypted_records": 8,
+    "wrong_key_not_archived": true,
+    "new_format_locked_display": "operator confirmed",
+    "wrong_key_error_banner": "operator confirmed; plaintext absent",
+    "correct_key_recovery_display": "operator confirmed",
+    "sender_and_device_keys_unchanged": true
+  },
+  "sender": {
+    "entrypoints": [
+      "zbark-send",
+      "zbark-run"
+    ],
+    "adopted_flows": [
+      "local sender/package maintenance command",
+      "SSH server backup create/status completion"
+    ],
+    "transport_failure_recovery": "injected isolated transport failure; durable ciphertext retained, then explicit CLI replay accepted and physically archived",
+    "pending_final": 0,
+    "concurrent_capacity_and_interrupted_installer": "regression covered",
+    "automatic_retries": false,
+    "other_business_senders_migrated": false
+  },
+  "recovery": {
+    "server_archive_sha256": "0c34b1bac8505a0dd3577304e6f1a7722c887701c0ea6c3d83e9dbd8970e383a",
+    "server_runtime_drill": "no network, no published ports, restored data/certs only; 3 registrations and full key/token fingerprint unchanged",
+    "sqlite_integrity": "passed",
+    "bbolt_integrity": "passed",
+    "off_host_mac_decrypt_verify": "passed",
+    "sender_config_isolated_restore_and_send": "passed; acceptance and physical history correlated",
+    "client_state_archive_sha256": "d7c59f39b7142b383dedf4887f797dc3232385350388d8457cf7719a005a8872",
+    "copied_realm_restore": "all 52 rows identical",
+    "production_app_group_restore_attempted": false,
+    "password_backed_up_separately": true
+  },
+  "automation": {
+    "client_python_tests": 16,
+    "node_tests": 1,
+    "server_python_tests": 15,
+    "server_go_race_and_vet": "passed",
+    "client_native_source_unchanged": true,
+    "client_ci": "see current PR checks; source CI is recorded separately from documentation",
+    "server_source_ci": "https://github.com/prur/bark-server/actions/runs/42147019556"
+  },
+  "delivery": {
+    "client_pr": "https://github.com/prur/Bark/pull/2",
+    "server_pr": "https://github.com/prur/bark-server/pull/2",
+    "state": "open; not merged"
+  },
+  "limits": [
+    "No unrelated business producer or existing Discord/security-monitor migration",
+    "No automatic local schedule or blind retry of provider rejection",
+    "No live App Group restore, native downgrade or full-host/ntfy service failover",
+    "Off-host copy is on this Mac; independent third-location/password-vault recovery unverified",
+    "Focus/DND, sound and Widget remain outside this acceptance",
+    "Critical Alerts remain unapproved and disabled"
+  ],
+  "generated_at_utc": "2026-11-06T02:07:00.248464+00:00",
+  "evidence_root": "build/daily-reliability-20261106 (ignored; raw data and keys remain private)"
+}
