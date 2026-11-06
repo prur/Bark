@@ -147,6 +147,7 @@ class ServerListViewModel: ViewModel, ViewModelType {
                 Observable.just(()),
                 serverDeleted,
                 serverResetSuccess,
+                ServerManager.shared.serverKeyUpdatedRelay.asObservable(),
                 input.setServerName.map { _ in () }.asObservable(),
                 serverStateChanged.asObservable()
             )

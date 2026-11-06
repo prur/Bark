@@ -124,15 +124,21 @@ class CryptoSettingViewModel: ViewModel, ViewModelType {
     }
 
     /// No secrets or fixed nonces are embedded in the copied, reusable example.
+    static func senderEndpoint(serverAddress: String) throws -> String {
+        guard let url = URL(string: serverAddress), url.host != nil,
+              ["https", "http"].contains(url.scheme) else { throw "Invalid server address" }
+        return url.appendingPathComponent("push").absoluteString
+    }
+
     static func senderExample(fields: CryptoSettingFields, serverAddress: String) throws -> String {
-        let origin = String(decoding: try JSONEncoder().encode(serverAddress), as: UTF8.self)
+        let endpoint = String(decoding: try JSONEncoder().encode(senderEndpoint(serverAddress: serverAddress)), as: UTF8.self)
         let keyEncoding = fields.keyEncoding == "base64" ? "base64" : "utf8"
         let ivLength = ["CBC": 16, "GCM": 12][fields.mode] ?? 0
         return """
         // Set ZBARK_DEVICE_KEY and ZBARK_CRYPTO_KEY privately before running.
         // ZBARK_CRYPTO_KEY uses \(keyEncoding) encoding for this configuration.
         const crypto = require('node:crypto');
-        const server = \(origin);
+        const pushUrl = \(endpoint);
         if (!process.env.ZBARK_DEVICE_KEY || !process.env.ZBARK_CRYPTO_KEY) throw new Error('Missing private key configuration');
         const key = Buffer.from(process.env.ZBARK_CRYPTO_KEY, '\(keyEncoding)');
         const iv = \(ivLength) ? crypto.randomBytes(\(ivLength)) : null;
@@ -144,7 +150,7 @@ class CryptoSettingViewModel: ViewModel, ViewModelType {
         const payload = {device_key: process.env.ZBARK_DEVICE_KEY, ciphertext};
         if (iv) { payload.iv = iv.toString('base64'); payload.iv_encoding = 'base64'; }
         (async () => {
-          const response = await fetch(new URL('/push', server), {
+          const response = await fetch(pushUrl, {
             method: 'POST', redirect: 'error', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
           });

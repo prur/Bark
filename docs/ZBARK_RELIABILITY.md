@@ -267,15 +267,15 @@ to a separately validated update. Do not force-push or silently rebase the teste
 release onto that branch. The inherited Cloudflare documentation publishing job
 is guarded to Finb's repository; this fork only needs credential-free regression.
 
-## Current accepted delivery (2026-11-06 continuation)
+## Accepted build 4 checkpoint (2026-11-06 continuation)
 
 The phone now runs **Z Bark 1.0.0 build 4**, exported from clean source
 `85a02d69ef8c3389cb810509bd4d08c4b13658fc`. IPA SHA-256:
 `4f3f5dea3ae2257b9b80ceb33a0467b00e7324c08ccacd4bf0ddec210536617b`.
 All four original Ad Hoc profile UUIDs were reused, with production APNs and
 no Critical Alerts or debug entitlement. Signing identities were unchanged.
-Later commits only add sender tooling and the acceptance ledger, not native app
-code, dependency locks, Bundle IDs or Realm schema.
+This is the build 4 checkpoint. The reviewed native follow-up below is tested
+and exported separately; it does not change Bundle IDs, dependencies or schema.
 
 The physical iPhone 16 Pro (iOS 27.0.1) completed build 1 → 2 → 3 → 4 in-place
 updates. All 29 original Realm records retained their complete content. A full
@@ -340,3 +340,16 @@ sender changes only the three scripts (`zbark_send.py`, `zbark_device.py`,
 changing the launcher. Preserve `~/.config/zbark/sender.json` throughout.
 Other existing senders must explicitly adopt encryption; enabling it on the
 client does not transform their plaintext requests.
+
+## Review follow-up after build 4
+
+The reusable encrypted example now appends `push` to the configured server
+path, including path prefixes and trailing slashes. Persisting a replacement
+server key emits a list update immediately, before old-key revocation finishes;
+a revocation error still reports failure while the visible key matches storage.
+Pending history resolves the newest version per ID before checking TTL. An
+expired replacement removes an older saved version rather than reviving an
+older queued body. If acknowledging an older file fails, its expired replacement
+is retained until that older file is removed, so the next retry stays safe.
+Focused regression covers prefixed URLs, persisted-key UI events, expired
+replacements and acknowledgement failure, plus stale expiry against newer data.

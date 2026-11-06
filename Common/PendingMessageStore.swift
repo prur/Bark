@@ -27,7 +27,8 @@ struct PendingMessageStore {
     func importMessages(
         into realm: Realm,
         now: Date = Date(),
-        write: ((() -> Void) throws -> Void)? = nil
+        write: ((() -> Void) throws -> Void)? = nil,
+        acknowledge: ((URL) throws -> Void)? = nil
     ) throws -> ImportResult {
         let fileManager = FileManager.default
         let files: [URL]
@@ -38,8 +39,8 @@ struct PendingMessageStore {
             files = []
         }
 
-        var acknowledgedFiles: [URL] = []
-        var messages: [Message] = []
+        var acknowledgedFiles: [(url: URL, message: Message)] = []
+        var latest: [String: (url: URL, message: Message)] = [:]
         for url in files {
             guard let data = try? Data(contentsOf: url),
                   let dictionary = (try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)) as? [String: Any],
@@ -51,18 +52,22 @@ struct PendingMessageStore {
                 continue
             }
             let message = Message(dict: dictionary)
-            acknowledgedFiles.append(url)
-            if let expiry = message.expireDate, expiry <= now { continue }
-            messages.append(message)
+            acknowledgedFiles.append((url, message))
+            if let previous = latest[id], (previous.message.createDate ?? .distantPast) > (message.createDate ?? .distantPast) { continue }
+            latest[id] = (url, message)
         }
-        messages.sort { ($0.createDate ?? .distantPast) < ($1.createDate ?? .distantPast) }
+        // An expired replacement is a tombstone for older queued/stored versions.
+        // Choose the newest delivery BEFORE testing expiry, never revive an old body.
+        let expiredPending = latest.values.filter { ($0.message.expireDate ?? .distantFuture) <= now }
+        let messages = latest.values.map(\.message).filter { ($0.expireDate ?? .distantFuture) > now }
+            .sorted { ($0.createDate ?? .distantPast) < ($1.createDate ?? .distantPast) }
 
         let expired = realm.objects(Message.self).filter("expireDate != nil AND expireDate <= %@", now)
         let expiredIDs = Array(expired.map(\.id))
         var deletedIDs: [String] = []
         var deletedImages: [String] = []
         var didChange = false
-        if !messages.isEmpty || !expiredIDs.isEmpty {
+        if !messages.isEmpty || !expiredPending.isEmpty || !expiredIDs.isEmpty {
             let commit = write ?? { changes in try realm.write(changes) }
             try commit {
                 for message in messages {
@@ -72,6 +77,15 @@ struct PendingMessageStore {
                     }
                     realm.add(message, update: .all)
                     didChange = true
+                }
+                for pending in expiredPending {
+                    if let saved = realm.object(ofType: Message.self, forPrimaryKey: pending.message.id),
+                       (saved.createDate ?? .distantPast) <= (pending.message.createDate ?? .distantPast) {
+                        deletedIDs.append(saved.id)
+                        if let image = saved.image { deletedImages.append(image) }
+                        realm.delete(saved)
+                        didChange = true
+                    }
                 }
                 // Use the captured IDs: adding a newer version above may have
                 // changed its expiry and must not cause it to be deleted.
@@ -86,7 +100,16 @@ struct PendingMessageStore {
                 }
             }
         }
-        for url in acknowledgedFiles { try? fileManager.removeItem(at: url) }
+        let remove = acknowledge ?? { try fileManager.removeItem(at: $0) }
+        let tombstones = Set(expiredPending.map(\.url))
+        var failedIDs = Set<String>()
+        for entry in acknowledgedFiles where !tombstones.contains(entry.url) {
+            do { try remove(entry.url) }
+            catch { if fileManager.fileExists(atPath: entry.url.path) { failedIDs.insert(entry.message.id) } }
+        }
+        // Keep an expired latest file until every older file is acknowledged.
+        // Otherwise a failed old-file removal could resurrect it on the next run.
+        for entry in expiredPending where !failedIDs.contains(entry.message.id) { try? remove(entry.url) }
         return ImportResult(didChangeMessages: didChange, expiredIDs: deletedIDs, expiredImageURLs: Array(Set(deletedImages)))
     }
 }

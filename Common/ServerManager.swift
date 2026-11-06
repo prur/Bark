@@ -119,6 +119,9 @@ class ServerManager: NSObject {
         }
     }
     let currentServerUpdateRelay = PublishRelay<Server>()
+    /// All server-list cells must refresh as soon as a replacement is persisted,
+    /// even if the subsequent old-key revocation fails or is still in flight.
+    let serverKeyUpdatedRelay = PublishRelay<Void>()
 
     /// 更改当前选中的 server
     func setCurrentServer(serverId: String) {
@@ -140,6 +143,7 @@ class ServerManager: NSObject {
         let foundServer = self.servers.first { $0.id == server.id }
         foundServer?.key = server.key
         saveServers()
+        serverKeyUpdatedRelay.accept(())
         // 主要用于更新首页示例中的 key
         if server.id == currentServer.id {
             currentServerUpdateRelay.accept(currentServer)
@@ -245,6 +249,7 @@ class ServerManager: NSObject {
                 // Persist each successful response immediately. A slow server,
                 // cancellation or app suspension must not lose another key.
                 self.saveServers()
+                self.serverKeyUpdatedRelay.accept(())
                 if server.id == self.currentServer.id {
                     self.currentServerUpdateRelay.accept(server)
                 }

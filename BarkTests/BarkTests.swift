@@ -93,6 +93,33 @@ class BarkTests: XCTestCase {
         XCTAssertEqual(reopened.object(ofType: Message.self, forPrimaryKey: "disk")?.body, "saved")
     }
 
+    func testExpiredReplacementDoesNotResurrectQueuedOrSavedVersions() throws {
+        let store = try store()
+        let database = try realm()
+        try store.save(["id": "same", "body": "old", "createDate": 100.0])
+        _ = try store.importMessages(into: database, now: Date(timeIntervalSince1970: 110))
+        let oldRetry = try store.save(["id": "same", "body": "old retry", "createDate": 100.0])
+        let tombstone = try store.save(["id": "same", "body": "expired replacement", "createDate": 200.0, "expireDate": 250.0])
+        struct AckFailure: Error {}
+        let result = try store.importMessages(into: database, now: Date(timeIntervalSince1970: 300), acknowledge: { url in
+            if url == oldRetry { throw AckFailure() }
+            try FileManager.default.removeItem(at: url)
+        })
+        XCTAssertTrue(database.objects(Message.self).isEmpty)
+        XCTAssertEqual(result.expiredIDs, ["same"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tombstone.path))
+        _ = try store.importMessages(into: database, now: Date(timeIntervalSince1970: 301))
+        XCTAssertTrue(database.objects(Message.self).isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldRetry.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tombstone.path))
+
+        try store.save(["id": "same", "body": "newer", "createDate": 400.0])
+        _ = try store.importMessages(into: database, now: Date(timeIntervalSince1970: 500))
+        try store.save(["id": "same", "body": "late expired", "createDate": 200.0, "expireDate": 250.0])
+        _ = try store.importMessages(into: database, now: Date(timeIntervalSince1970: 500))
+        XCTAssertEqual(database.objects(Message.self).first?.body, "newer")
+    }
+
     func testNotificationDeliveryCompletesOnceAndKeepsSnapshot() {
         let content = UNMutableNotificationContent()
         content.body = "initial"
@@ -170,6 +197,11 @@ class BarkTests: XCTestCase {
         let server = Server(address: "https://example.invalid", key: "working")
         var saved: [String] = []
         let manager = ServerManager(servers: [server]) { saved.append($0[0].key) }
+        var displayedKeys: [String] = []
+        let updates = manager.serverKeyUpdatedRelay.subscribe(onNext: {
+            displayedKeys.append(ServerListTableViewCellViewModel(server: server).key.value)
+        })
+        defer { updates.dispose() }
         var requests: [String?] = []
         let failed = manager.resetServerKey(server: server, requestedKey: nil, token: "offline") { key, _ in
             requests.append(key)
@@ -183,6 +215,7 @@ class BarkTests: XCTestCase {
             if token == "deleted" {
                 XCTAssertEqual(key, "working")
                 XCTAssertEqual(saved, ["replacement"])
+                XCTAssertEqual(displayedKeys, ["replacement"])
                 return .error(URLError(.timedOut))
             }
             return .just("replacement")
@@ -242,5 +275,12 @@ struct EncryptionReliabilityTests {
         #expect(script.contains("iv_encoding = 'base64'"))
         #expect(script.contains("method: 'POST', redirect: 'error'"))
         #expect(!script.contains("?ciphertext="))
+    }
+
+    @Test(arguments: ["https://example.com/bark", "https://example.com/bark/"])
+    func senderPreservesServerPathPrefix(address: String) throws {
+        #expect(try CryptoSettingViewModel.senderEndpoint(serverAddress: address) == "https://example.com/bark/push")
+        let script = try CryptoSettingViewModel.senderExample(fields: CryptoSettingFields.secureDefaults(), serverAddress: address)
+        #expect(!script.contains("new URL('/push'"))
     }
 }
