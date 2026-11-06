@@ -450,3 +450,57 @@ before publishing a versioned bundle, so interrupted copying can be retried.
 Concurrent installations are serialized. The outbox reserves capacity before
 executing a command and consumes the reservation when its ciphertext is durable.
 Regression covers the final available slot and interrupted installation/retry.
+
+
+## Daily-use acceptance (2026-11-06)
+
+Client PR: [daily notifications](https://github.com/prur/Bark/pull/2).
+Server PR: [consistent recovery](https://github.com/prur/bark-server/pull/2).
+Native client remains 1.0.0 build 5, source `d670ccc`; its existing IPA hash,
+profiles and connected-device installation were reverified. The native source,
+schema, key and entitlements were not changed. Final sender source is `8577eb4`.
+
+The installed `zbark-run` was used for local sender/package verification and
+remote backup create/status commands. An isolated injected sender transport
+failure returned 75 after preserving ciphertext; a separate normal CLI process
+replayed the same event and the real physical database contains it. The queue
+ended empty. A failed server restore trial also produced a correctly decrypted
+failure event; it was fixed before switching the daily backup entry.
+
+The phone was confirmed locked by CoreDevice before the new-format test. The
+operator explicitly confirmed the readable encrypted lock-screen body, the
+`Decryption Failed` banner without wrong-key plaintext, and subsequent correct-key
+recovery. The final copied physical Realm has 52 records: all original 44 are
+unchanged, eight new encrypted records are present, and the wrong-key ID is absent.
+Server/key and crypto fingerprints match the initial snapshot. API acceptance,
+operator display and physical database evidence are separate in the report.
+
+Server recovery ran without network or live mounts and retained all three
+registrations and their complete content fingerprint. The existing systemd
+backup entry now uses the new helper and passed its full drill. Its successful
+unit run stopped/copied/restarted Bark in 0.505 seconds; total trial downtime was
+not measured. Other services did not restart. The runtime source/image remains
+`6e19b8a`; backup-tool source is `f17001a`. New registration stays closed.
+
+Encrypted server backups were copied off-host to this Mac and decrypted/verified.
+The sender config and final standalone package were backed up, restored only in
+an isolated directory, and compared exactly. A restored config sent an encrypted
+message which is present in physical history. The final client/App Group snapshot
+was also encrypted, recovered to an isolated directory and read with the locked
+Realm library: all 52 rows match. No live app/container restore was attempted.
+
+Protected recovery artifacts are under `~/.local/share/zbark/recovery/20261106-520eabc3/`;
+the existing server backup password was separately preserved at
+`~/.config/zbark/recovery/notify-backup.pass` (owner-only). They are not in git.
+This is an off-host copy, not independent third-location or password-vault proof.
+Retain the previous IPA; a native downgrade and full device restore remain
+unperformed. Focus/DND, sound, Widget, and unrelated producer migration are still
+separate work. Critical Alerts remain absent.
+
+Public ledger: `docs/validation/ZBARK_DAILY_20261106.json`. Local detailed evidence:
+`build/daily-reliability-20261106/validation-report.json`, physical history and
+preservation reports, operator observation, sender manifest, recovery reports
+and protected snapshots. 16 client Python tests, the Node authentication/nonce
+test, 15 server Python tests and Go race/vet pass. The two client review findings
+(capacity reservation and interrupted bundle publication) are fixed and covered.
+Check the linked PRs for current CI and review state before merging.
