@@ -1,5 +1,6 @@
 from pathlib import Path
 import tempfile
+import plistlib
 import unittest
 from unittest.mock import patch
 
@@ -41,6 +42,25 @@ class InstallerTests(unittest.TestCase):
             launcher.write_text("existing user command")
             with self.assertRaises(ValueError): installer.install(home)
             self.assertEqual(launcher.read_text(), "existing user command")
+
+    def test_schedule_pins_verified_bundle_and_preserves_previous_definition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            manifest = {"bundle": str(home / ".local/share/zbark/sender-fixture")}
+            first = installer.install_schedule(home, manifest)
+            path = Path(first["plist"])
+            value = plistlib.loads(path.read_bytes())
+            self.assertEqual(value["ProgramArguments"][1], manifest["bundle"] + "/scripts/zbark_watch.py")
+            self.assertEqual(value["StartCalendarInterval"], {"Minute": 45})
+            self.assertFalse(first["activated"])
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            original = path.read_bytes()
+            manifest["bundle"] += "-new"
+            installer.install_schedule(home, manifest)
+            saved = list(path.parent.glob("*.previous-*"))
+            self.assertEqual(len(saved), 1)
+            self.assertEqual(saved[0].read_bytes(), original)
+            self.assertNotIn("sender.json", path.read_text())
 
 
 if __name__ == "__main__": unittest.main()
