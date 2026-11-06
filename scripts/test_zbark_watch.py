@@ -195,7 +195,7 @@ class WatchTests(unittest.TestCase):
                 watch.mirror(report, root, root / "password")
                 verify.assert_called_once()
                 watch.mirror(report, root, root / "password")
-                verify.assert_called_once()  # unchanged ciphertext is rehashed without another transfer/decrypt
+                self.assertEqual(verify.call_count, 2)  # unchanged ciphertext still needs the current recovery password
             self.assertEqual(len(list(root.glob("notify-data-*"))), 7)
             self.assertEqual((baseline / "keep").read_text(), "untouched")
             latest = root / report["archive"].removesuffix(".tar.gz.enc") / report["archive"]
@@ -210,6 +210,27 @@ class WatchTests(unittest.TestCase):
         with patch.object(watch, "ssh", return_value=json.dumps(self.report()).encode()), \
              patch.object(watch, "validate_report"), patch.object(watch, "mirror", side_effect=ValueError()):
             self.assertEqual(watch.check(Path("fixture"), Path("password"))[0], "mirror-failed")
+
+    def test_cached_copy_detects_password_loss_and_corruption_without_replacing_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive, password = self.make_archive(root)
+            mirror = root / "mirror"
+            report = self.report(sha256=watch.digest(archive))
+            data = archive.read_bytes()
+            def copy_archive(_, output): output.write(data)
+            with patch.object(watch, "validate_report", return_value=(report["archive"], report["sha256"])), \
+                 patch.object(watch, "ssh", side_effect=copy_archive) as remote:
+                watch.mirror(report, mirror, password)
+                password.unlink()
+                with self.assertRaises(ValueError): watch.mirror(report, mirror, password)
+                password.write_text("wrong-password"); password.chmod(0o600)
+                with self.assertRaises((ValueError, tarfile.TarError)): watch.mirror(report, mirror, password)
+                password.write_text("fixture-password")
+                self.assertTrue(watch.mirror(report, mirror, password)["password_decryption"])
+                self.assertEqual(remote.call_count, 1)
+                restored = mirror / report["archive"].removesuffix(".tar.gz.enc") / report["archive"]
+                self.assertEqual(restored.read_bytes(), data)
 
 
 if __name__ == "__main__": unittest.main()

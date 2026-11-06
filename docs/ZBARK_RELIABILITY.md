@@ -558,7 +558,9 @@ stored `~/.config/zbark/recovery/notify-backup.pass`, OpenSSL streams decrypted
 bytes through a pipe. No plaintext archive is written or extracted. Every inner
 manifest hash, required asset, restored revision and full registration fingerprint
 must match. Only then is the directory published under
-`~/.local/share/zbark/backup-mirror/`. Later checks rehash the encrypted copy.
+`~/.local/share/zbark/backup-mirror/`. Later checks rehash the encrypted copy and repeat streaming decryption/manifest
+verification with the current recovery password, so password loss or damage is
+visible without waiting for another backup or downloading the same archive again.
 After successful publication, retain seven completed copies in this dedicated
 mirror; the earlier `recovery/` material is never pruned. Failure preserves prior
 copies. This combines the server's isolated runtime drill with local decryption

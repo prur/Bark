@@ -145,7 +145,8 @@ def mirror(report, root, password):
         verification = protected_json(destination / "verification.json")
         if verification["encrypted_sha256"] != checksum or digest(destination / name) != checksum:
             raise ValueError("Existing off-host copy changed; preserve it for diagnosis")
-        return verification
+        # A cached successful drill cannot prove that the recovery password still works.
+        return verify_encrypted(destination / name, password, report)
     with tempfile.TemporaryDirectory(prefix=".copy-", dir=root) as directory:
         stage = Path(directory)
         archive = stage / name
