@@ -81,5 +81,34 @@ class CompletionTests(unittest.TestCase):
             link.symlink_to(path)
             with self.assertRaises(ValueError): runner.private_directory(link)
 
+    def test_concurrent_command_reserves_last_slot_before_work_can_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outbox = Path(directory) / "outbox"
+            outbox.mkdir(mode=0o700)
+            for index in range(255): (outbox / f"{index}.json").write_text("{}")
+            with runner.reservation(outbox):
+                args = ["run", "--label", "Must not execute", "--outbox", str(outbox), "--", "fixture"]
+                with patch.object(sys, "argv", args), patch.object(runner, "protected_json", return_value=self.config()), \
+                     patch.object(runner, "validate"), patch.object(runner.subprocess, "run") as work, \
+                     contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(runner.main(), 75)
+                    work.assert_not_called()
+            with runner.reservation(outbox) as reserved:
+                queued = runner.enqueue(outbox, self.config(), {"id": "last-slot"}, reserved)
+                self.assertTrue(queued.exists())
+                self.assertFalse(reserved.exists())
+            self.assertEqual(len(list(outbox.glob("*.json"))), 256)
+
+    def test_abandoned_unlocked_reservation_is_reclaimed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outbox = Path(directory) / "outbox"
+            outbox.mkdir(mode=0o700)
+            stale = outbox / "abandoned.reserved"
+            stale.write_text("")
+            with runner.reservation(outbox):
+                self.assertFalse(stale.exists())
+                self.assertEqual(len(list(outbox.glob("*.reserved"))), 1)
+            self.assertEqual(list(outbox.glob("*.reserved")), [])
+
 
 if __name__ == "__main__": unittest.main()

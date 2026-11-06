@@ -426,7 +426,9 @@ No device key, encryption key, command text or plaintext body is saved in the qu
 A nonzero task result is preserved. If the task succeeded but notification failed,
 the wrapper returns 75. The wrapper does not cover host power loss/forced kill
 before completion. Queue persistence can fail if storage is full, and reports
-whether the event was queued; a full queue is rejected before starting work.
+whether the event was queued; a full queue is rejected before starting work. Each running command reserves a slot under the outbox lock;
+reservations are reclaimed after process exit, so concurrent commands cannot
+consume the last slot twice.
 
 This is explicit retry, not exactly-once delivery. An ambiguous network failure
 may mean APNs already accepted the first request. A repeated ID updates history
@@ -441,3 +443,10 @@ fingerprints and use `zbark-send --config /isolated/copy/sender.json` for one
 explicit recovery test. Never restore over current preferences, overwrite the
 existing crypto key, uninstall the app, or use this as an App Group restore claim.
 History recovery still requires the compatible client/Realm procedure above.
+
+
+Review follow-up: the installer now copies and verifies in a temporary directory
+before publishing a versioned bundle, so interrupted copying can be retried.
+Concurrent installations are serialized. The outbox reserves capacity before
+executing a command and consumes the reservation when its ciphertext is durable.
+Regression covers the final available slot and interrupted installation/retry.

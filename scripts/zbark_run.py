@@ -37,14 +37,45 @@ def locked(outbox):
         yield
 
 
-def enqueue(outbox, credentials, payload):
+def sweep_reservations(outbox):
+    # Locks disappear on process exit, so interrupted commands cannot leak capacity.
+    for path in outbox.glob("*.reserved"):
+        fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
+        try:
+            try: fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError: continue
+            path.unlink()
+        finally: os.close(fd)
+
+
+@contextlib.contextmanager
+def reservation(outbox):
+    with locked(outbox):
+        sweep_reservations(outbox)
+        if len(list(outbox.glob("*.json"))) + len(list(outbox.glob("*.reserved"))) >= 256:
+            raise ValueError("Outbox is full")
+        path = outbox / (uuid.uuid4().hex + ".reserved")
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+    try:
+        yield path
+    finally:
+        with locked(outbox):
+            path.unlink(missing_ok=True)
+            os.close(fd)
+
+
+def enqueue(outbox, credentials, payload, reserved=None):
     envelope = json.loads(command(["node", str(ROOT / "scripts/zbark_encrypt.cjs")],
                                   json.dumps({"payload": payload, "fields": credentials["crypto"]}).encode()))
     identifier = payload["id"]
     record = {"format": 1, "id": identifier, "credential_fingerprint": fingerprint(credentials),
               "created_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(), "envelope": envelope}
     with locked(outbox):
-        if len(list(outbox.glob("*.json"))) >= 256:
+        sweep_reservations(outbox)
+        if reserved is not None and not reserved.exists():
+            raise ValueError("Command completion reservation is missing")
+        if reserved is None and len(list(outbox.glob("*.json"))) + len(list(outbox.glob("*.reserved"))) >= 256:
             raise ValueError("Outbox is full; inspect pending events before running another command")
         path = outbox / (identifier + ".json")
         pending = path.with_suffix(".partial")
@@ -53,6 +84,7 @@ def enqueue(outbox, credentials, payload):
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(pending, path)
+        if reserved is not None: reserved.unlink()
         sync_directory(outbox)
     return path
 
@@ -63,9 +95,6 @@ def validate(credentials, outbox):
     # Exercise the actual encryption dependency before executing the user's task.
     command(["node", str(ROOT / "scripts/zbark_encrypt.cjs")],
             json.dumps({"payload": {"id": "preflight"}, "fields": credentials["crypto"]}).encode())
-    with locked(outbox):
-        if len(list(outbox.glob("*.json"))) >= 256:
-            raise ValueError("Outbox is full")
 
 
 def sync_directory(path):
@@ -107,7 +136,9 @@ def main():
                 parser.error("choose one of command execution, --flush, or --status")
             if args.status:
                 with locked(args.outbox):
-                    print(json.dumps({"pending": len(list(args.outbox.glob('*.json')))}))
+                    sweep_reservations(args.outbox)
+                    print(json.dumps({"pending": len(list(args.outbox.glob('*.json'))),
+                                      "running": len(list(args.outbox.glob('*.reserved')))}))
                 return 0
             credentials = protected_json(args.config)
             results = deliver(args.outbox, credentials)
@@ -118,19 +149,20 @@ def main():
         # Fail before starting work if it cannot produce an encrypted completion event.
         credentials = protected_json(args.config)
         validate(credentials, args.outbox)
-        started = time.monotonic()
-        try:
-            exit_code = subprocess.run(task).returncode
-        except OSError:
-            exit_code = 127
-        except KeyboardInterrupt:
-            exit_code = 130
-        exit_code = exit_code if exit_code >= 0 else 128 - exit_code
-        payload = {"id": "zbark-task-" + str(uuid.uuid4()), "title": args.label,
-                   "body": f"{'完成' if exit_code == 0 else '失败'} · exit {exit_code} · {time.monotonic() - started:.1f}s",
-                   "group": "Z Bark 运维", "isArchive": "1"}
-        path = enqueue(args.outbox, credentials, payload)
-        pending = path
+        with reservation(args.outbox) as reserved:
+            started = time.monotonic()
+            try:
+                exit_code = subprocess.run(task).returncode
+            except OSError:
+                exit_code = 127
+            except KeyboardInterrupt:
+                exit_code = 130
+            exit_code = exit_code if exit_code >= 0 else 128 - exit_code
+            payload = {"id": "zbark-task-" + str(uuid.uuid4()), "title": args.label,
+                       "body": f"{'完成' if exit_code == 0 else '失败'} · exit {exit_code} · {time.monotonic() - started:.1f}s",
+                       "group": "Z Bark 运维", "isArchive": "1"}
+            path = enqueue(args.outbox, credentials, payload, reserved)
+            pending = path
         results = deliver(args.outbox, credentials, path)
         print(json.dumps({"task_exit": exit_code, "accepted": results, "encrypted": True}, ensure_ascii=False))
         return exit_code
