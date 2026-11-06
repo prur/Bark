@@ -207,7 +207,7 @@ Authoritative references: [APNs registration](https://developer.apple.com/docume
   locally committed. Only the read-only Finb upstream origin is configured, and no
   personal fork exists at `prur/Bark` or `prur/bark-server`; no remote PR is claimed.
 
-The current handoff directory is `build/zbark-reliability-20261106/` in the original
+That initial handoff directory was `build/zbark-reliability-20261106/` in the original
 client checkout. It contains the new IPA and combined validation report, with
 paths to xcresult, signing and deployment evidence in the isolated worktrees.
 
@@ -281,7 +281,7 @@ The physical iPhone 16 Pro (iOS 27.0.1) completed build 1 → 2 → 3 → 4 in-p
 updates. All 29 original Realm records retained their complete content. A full
 phone reboot retained all 39 then-current records, the existing server/key and
 the new encryption configuration. Build 3 → 4 retained all 40 pre-update records.
-After new background encrypted sends and a final app restart, Realm contained
+After new background encrypted sends and application re-entry, Realm contained
 42 live records, including all expected test IDs and no wrong-key plaintext.
 The server observed successful POST registration against deployed runtime
 `6e19b8a6acb486645960226a1dfcdfd06effd8f5`; all 3 server registrations remained.
@@ -313,7 +313,7 @@ ordering/emergency-disable behavior is covered by local regressions. The
 wrong-key fallback banner itself was not independently observed, although GCM
 authentication rejection, physical history omission and subsequent successful
 physical delivery were verified. Focus/DND behavior, sound, Widget placement,
-positive-TTL expiry on device and the new encrypted format on a locked display
+the new encrypted format on a locked display
 were not separately accepted. Critical Alerts remain unapproved and disabled.
 
 ### Ready-to-use local encrypted sender
@@ -353,3 +353,43 @@ older queued body. If acknowledging an older file fails, its expired replacement
 is retained until that older file is removed, so the next retry stays safe.
 Focused regression covers prefixed URLs, persisted-key UI events, expired
 replacements and acknowledgement failure, plus stale expiry against newer data.
+
+## Final accepted release: 1.0.0 build 5
+
+Clean native release source: `d670ccc650d7b301d88a4522489bdb5477dbe1d7`.
+IPA SHA-256: `e723ff1b753c8abf921c784acbfd20ae51d59753668f5b6dfa7271ad1ecf04e8`.
+All four existing Ad Hoc profiles were reused and Critical Alerts remain absent.
+Build 4 → 5 preserved all 42 pre-update records, the server/key and the encryption
+configuration. The accepted database now has 44 records, including the two new
+correctly decrypted build-5 test messages; all 29 original records are unchanged.
+Native regression reports 17 tests with zero failures. The exact native source
+passed both push and PR GitHub Actions and has no unresolved code-review finding.
+
+A command audit found that earlier `--terminate-existing` flags placed after the
+bundle ID were passed as app arguments. Those older calls prove re-entry only;
+they are not cold-restart evidence. The corrected call below explicitly returned
+`terminateExistingInstances=true` and a different PID. After that real cold start,
+all pre-update records/key/crypto were preserved, and an expired TTL replacement
+was removed without reviving the old body. A new encrypted notification then
+decrypted and persisted after the cold start. The full-system reboot and all
+installation evidence are independent of this correction and remain valid.
+
+```sh
+xcrun devicectl device process launch --device <UDID> --terminate-existing \
+  --json-output build/cold-restart.json cc.sanbox.bark
+```
+
+Keep launch options before the bundle ID. Inspect `launchOptions` and the old/new
+PID; a successful launch alone is not a restart assertion.
+
+The attempted physical setup with two simultaneously queued pending versions
+did not establish that precondition; no physical queued-conflict pass is claimed.
+That case, including acknowledgement failure and retry, is covered by the
+deterministic Realm/filesystem regression. The physical positive-TTL replacement
+was displayed, expired, and was absent after the verified cold start.
+
+The final IPA is `build/zbark-reliability-20261106-device/Z-Bark-1.0.0-5.ipa`.
+Builds 2/3/4 and their raw records are retained as historical checkpoints.
+The local combined report includes the correction, observed scope, CI references,
+source hashes and protected evidence paths. This final native source supersedes
+the build-4 checkpoint; subsequent ledger changes do not change native code.

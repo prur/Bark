@@ -1,10 +1,10 @@
 {
   "date": "2026-11-06",
   "client": {
-    "release_source": "85a02d69ef8c3389cb810509bd4d08c4b13658fc",
+    "release_source": "d670ccc650d7b301d88a4522489bdb5477dbe1d7",
     "version": "1.0.0",
-    "build": 4,
-    "ipa_sha256": "4f3f5dea3ae2257b9b80ceb33a0467b00e7324c08ccacd4bf0ddec210536617b",
+    "build": 5,
+    "ipa_sha256": "e723ff1b753c8abf921c784acbfd20ae51d59753668f5b6dfa7271ad1ecf04e8",
     "original_profiles_reused": true,
     "critical_alerts": false,
     "realm_schema": 19
@@ -23,16 +23,21 @@
     "initial_records_preserved": 29,
     "full_reboot_unchanged_records": 39,
     "build3_to_build4_unchanged_records": 40,
-    "final_live_records": 42,
+    "final_live_records": 44,
     "server_key_preserved": true,
     "encryption_preserved": true,
     "algorithm": "AES-256-GCM",
     "locked_display": "operator confirmed on build 2",
     "decryption": "correct key and post-reboot/update delivery verified",
-    "wrong_key": "not archived; recovery accepted; fallback banner unobserved"
+    "wrong_key": "not archived; recovery accepted; fallback banner unobserved",
+    "build4_to_build5_unchanged_records": 42,
+    "cold_restart_option_and_pid_verified": true,
+    "earlier_restart_flag_calls": "re-entry only; corrected cold start documented",
+    "stored_TTL_replacement_expired_without_resurrection": true,
+    "two_queued_versions_on_physical_device": "precondition not established; covered by deterministic regression"
   },
   "automation": {
-    "xcresult_reported_tests": 15,
+    "xcresult_reported_tests": 17,
     "native_failed": 0,
     "client_python": 7,
     "node": 1,
@@ -46,8 +51,8 @@
   "limits": [
     "No live timed public enrollment opening",
     "Wrong-key fallback banner not independently observed",
-    "Focus/DND, sound, Widget placement and positive-TTL device expiry not accepted",
     "New encrypted format not separately observed on locked display",
-    "Other senders require explicit encryption adoption"
+    "Other senders require explicit encryption adoption",
+    "Two simultaneous pending-file versions were not established physically; regression-only coverage"
   ]
 }
