@@ -529,3 +529,84 @@ remotes, original feature worktrees and their pre-existing untracked files remai
 untouched. This closeout changes only delivery documentation; its record commit
 skips redundant CI. It does not rebuild/reinstall the app, redeploy services,
 repeat device acceptance, or change data, keys, signing or registration policy.
+
+## Hourly backup watch and off-host copies (2026-11-06)
+
+PR #2 merge follow-up: both post-merge workflows completed successfully, including
+[client run 42150516039](https://github.com/prur/Bark/actions/runs/42150516039)
+and [server run 42150523314](https://github.com/prur/bark-server/actions/runs/42150523314).
+The maintenance bases were `54350a5` / `3d2e3b2`; deployed build 5, runtime
+`6e19b8a`, and backup helper `f17001a` remain separate provenance.
+
+Inventory found the real `notify-backup.timer` at 03:30 UTC daily, active with a
+successful service result, and a separate 15-minute security/Discord collector.
+Mac launch agents include a fleet security bridge and a daily certificate check;
+the latter's last exit was 1 and needs its owning project's diagnosis. The
+Agent-Session-Hub watcher remains unloaded. These existing channels and jobs are
+preserved. The selected new producer is the notification service's own backup
+health, whose off-host copy and status checks previously required manual work.
+
+`zbark-backup-watch` checks the existing SSH host `ovh-us-vps` with noninteractive,
+strict host-key verification. It reads `sudo /usr/local/bin/zbark-backup status`;
+it does not create a backup, stop a container or change enrollment. A healthy
+report must describe a drilled backup no older than 36 hours, isolated recovery,
+closed enrollment and an active/successful daily timer/service.
+
+A new encrypted archive is copied into an owner-only staging directory, bounded
+to 256 MiB, and must match the report SHA-256. Using the **existing** separately
+stored `~/.config/zbark/recovery/notify-backup.pass`, OpenSSL streams decrypted
+bytes through a pipe. No plaintext archive is written or extracted. Every inner
+manifest hash, required asset, restored revision and full registration fingerprint
+must match. Only then is the directory published under
+`~/.local/share/zbark/backup-mirror/`. Later checks rehash the encrypted copy.
+After successful publication, retain seven completed copies in this dedicated
+mirror; the earlier `recovery/` material is never pruned. Failure preserves prior
+copies. This combines the server's isolated runtime drill with local decryption
+and byte comparison; it is not a new local Docker or full-host recovery drill.
+
+Install the hash-verified bundle and optional hourly definition:
+
+```sh
+python3 scripts/install_zbark_sender.py --backup-watch
+plutil -lint ~/Library/LaunchAgents/cc.sanbox.zbark.backup-watch.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/cc.sanbox.zbark.backup-watch.plist
+~/.local/bin/zbark-backup-watch --status
+```
+
+The definition pins the verified bundle, Python executable and Node search path.
+It runs on load and at minute 45 each hour. The calendar trigger catches up on
+wake; it cannot check while this Mac is powered off or logged out. `--status`
+performs no network/send and fails if the observation is older than two hours.
+Safe state replaces unbounded logs. No SSH key or recovery/encryption password is
+copied by the installer. Existing definitions are preserved as `.previous-*`
+before replacement; an already loaded agent needs explicit bootout/bootstrap.
+To disable, use `launchctl bootout gui/$(id -u)/cc.sanbox.zbark.backup-watch`, then
+move its plist aside. This leaves recovery points and existing senders intact.
+
+The first healthy baseline is silent. A failure or recovery produces one encrypted
+state-change event using the existing sender configuration. Unchanged health is
+silent, including after an accepted fault alert. Pending ciphertext and its
+configuration fingerprint are persisted before transport. Network failures get
+at most three attempts, at least one hour apart, with the same ID/envelope.
+HTTP/application rejection and configuration changes block automatic replay.
+After six hours an unaccepted event expires; exhausted/expired alerts remain
+visible through `--status` and a nonzero exit, without an endless resend loop.
+A newer health transition supersedes an older pending event. After diagnosis,
+`zbark-backup-watch --retry-alert` explicitly creates a current-state alert.
+
+An ambiguous network failure can already have reached APNs: replay can repeat a
+banner, while the same ID updates one history record. Local six-hour expiry only
+bounds **unsent retries**. The unchanged server currently sets APNs expiration
+to 24 hours in `apns/apns.go`; accepted alerts may therefore arrive after their
+health state has changed. Message `ttl` controls archived-history expiry and does
+not shorten that provider lifetime. No exactly-once or immediate-device-delivery
+claim is made. If Bark itself cannot deliver, encrypted state remains on this
+Mac; the independent existing security/Discord path is still needed.
+
+Third-location storage, password-vault recovery and full-host/ntfy failover remain
+open. This job neither chooses an external storage account nor uploads secrets
+to a new destination. A local off-host mirror still shares this Mac's failure
+and theft boundary with its locally protected recovery password.
+
+References: Apple's [calendar scheduling behavior](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/ScheduledJobs.html)
+and [APNs request expiration](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
